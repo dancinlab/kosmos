@@ -4,7 +4,7 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><strong>[English](README.md) · [中文](README.zh.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md)</strong></p>
+<p align="center">EN · <a href="docs/README.zh.md">中文</a> · <a href="docs/README.ru.md">Русский</a> · <a href="docs/README.ja.md">日本語</a> · <a href="docs/README.ko.md">한국어</a></p>
 
 <p align="center"><strong>Multimodal Knowledge-Anchor Manifest</strong> — placement coords ⊥ modality payloads · cross-modal consistency · profile-bound</p>
 

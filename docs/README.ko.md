@@ -4,7 +4,7 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><strong>[English](README.md) · [中文](README.zh.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md)</strong></p>
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 한국어</p>
 
 <p align="center"><strong>멀티모달 지식 앵커 매니페스트(Multimodal Knowledge-Anchor Manifest)</strong> — 배치 좌표 ⊥ 모달리티 페이로드 · 교차모달 일관성 · profile 바인딩</p>
 
@@ -74,8 +74,8 @@
 
 기본 명세는 **기판 독립적(substrate-independent)** 입니다. `coord` 는 그저 "어떤 추상 공간 안의 한 점", `lane` 은 "파티션 id" 등이며, 그 구체적 의미는 **profile** 이 고정합니다.
 
-- [`spec/kosmos.md`](spec/kosmos.md) — 일반 문법(도메인 물리 없음).
-- [`spec/profiles/anima-consciousness-carving.md`](spec/profiles/anima-consciousness-carving.md) — 첫 번째 profile: `coord` / `lane` / `radius` / `tier` / `tags` 를 Living Consciousness Agent 인 `anima` 의 CONSCIOUSNESS-CARVING 패러다임에 바인딩합니다. 참조 구현: [`dancinlab/anima`](https://github.com/dancinlab/anima). 구체적인 도메인 물리 바인딩은 전적으로 그 profile 파일 안에 존재합니다.
+- [`spec/kosmos.md`](../spec/kosmos.md) — 일반 문법(도메인 물리 없음).
+- [`spec/profiles/anima-consciousness-carving.md`](../spec/profiles/anima-consciousness-carving.md) — 첫 번째 profile: `coord` / `lane` / `radius` / `tier` / `tags` 를 Living Consciousness Agent 인 `anima` 의 CONSCIOUSNESS-CARVING 패러다임에 바인딩합니다. 참조 구현: [`dancinlab/anima`](https://github.com/dancinlab/anima). 구체적인 도메인 물리 바인딩은 전적으로 그 profile 파일 안에 존재합니다.
 
 profile 은 결코 문법을 바꾸지 않습니다 — 필드 의미론만 바인딩합니다. 새 도메인은 profile 파일을 추가하며, 일반 명세는 순수하게 유지됩니다.
 
@@ -98,8 +98,8 @@ grep '^  @payload .* := ref ' *.kosmos
 grep -E '^  (coord|lane|radius|tier|tags) ' *.kosmos
 ```
 
-전체 문법과 BNF 는 [`spec/kosmos.md`](spec/kosmos.md) 를, 작성된 예제 파일은 [`examples/`](examples/) 를 참조하세요.
+전체 문법과 BNF 는 [`spec/kosmos.md`](../spec/kosmos.md) 를, 작성된 예제 파일은 [`examples/`](../examples/) 를 참조하세요.
 
 ## License
 
-[CC0-1.0](LICENSE) — 동족 포맷과 동일. 퍼블릭 도메인 헌정(Public domain dedication).
+[CC0-1.0](../LICENSE) — 동족 포맷과 동일. 퍼블릭 도메인 헌정(Public domain dedication).

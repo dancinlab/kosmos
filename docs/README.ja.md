@@ -4,7 +4,7 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><strong>[English](README.md) · [中文](README.zh.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md)</strong></p>
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · 日本語 · <a href="README.ko.md">한국어</a></p>
 
 <p align="center"><strong>マルチモーダル知識アンカー・マニフェスト（Multimodal Knowledge-Anchor Manifest）</strong> — 配置座標 ⊥ モダリティ・ペイロード · クロスモーダル整合性 · profile 束縛</p>
 
@@ -74,8 +74,8 @@
 
 基本仕様は **基盤非依存（substrate-independent）** です。`coord` は単に「ある抽象空間内の 1 点」、`lane` は「パーティション id」などであり、それらの具体的な意味は **profile** によって固定されます。
 
-- [`spec/kosmos.md`](spec/kosmos.md) — 一般文法（ドメイン物理を含まない）。
-- [`spec/profiles/anima-consciousness-carving.md`](spec/profiles/anima-consciousness-carving.md) — 最初の profile：`coord` / `lane` / `radius` / `tier` / `tags` を、Living Consciousness Agent である `anima` の CONSCIOUSNESS-CARVING パラダイムに束縛します。リファレンス実装：[`dancinlab/anima`](https://github.com/dancinlab/anima)。具体的なドメイン物理の束縛は、すべてその profile ファイル内に存在します。
+- [`spec/kosmos.md`](../spec/kosmos.md) — 一般文法（ドメイン物理を含まない）。
+- [`spec/profiles/anima-consciousness-carving.md`](../spec/profiles/anima-consciousness-carving.md) — 最初の profile：`coord` / `lane` / `radius` / `tier` / `tags` を、Living Consciousness Agent である `anima` の CONSCIOUSNESS-CARVING パラダイムに束縛します。リファレンス実装：[`dancinlab/anima`](https://github.com/dancinlab/anima)。具体的なドメイン物理の束縛は、すべてその profile ファイル内に存在します。
 
 profile は文法を決して変更しません——フィールドの意味論を束縛するだけです。新しいドメインは profile ファイルを追加します。一般仕様は純粋なまま保たれます。
 
@@ -98,8 +98,8 @@ grep '^  @payload .* := ref ' *.kosmos
 grep -E '^  (coord|lane|radius|tier|tags) ' *.kosmos
 ```
 
-完全な文法と BNF は [`spec/kosmos.md`](spec/kosmos.md) を、作成済みのサンプルファイルは [`examples/`](examples/) を参照してください。
+完全な文法と BNF は [`spec/kosmos.md`](../spec/kosmos.md) を、作成済みのサンプルファイルは [`examples/`](../examples/) を参照してください。
 
 ## License
 
-[CC0-1.0](LICENSE) — 同族フォーマットと同じ。パブリックドメイン献呈（Public domain dedication）。
+[CC0-1.0](../LICENSE) — 同族フォーマットと同じ。パブリックドメイン献呈（Public domain dedication）。

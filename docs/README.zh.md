@@ -4,7 +4,7 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><strong>[English](README.md) · [中文](README.zh.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md)</strong></p>
+<p align="center"><a href="../README.md">EN</a> · 中文 · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 <p align="center"><strong>多模态知识锚点清单（Multimodal Knowledge-Anchor Manifest）</strong> — 放置坐标 ⊥ 模态载荷 · 跨模态一致性 · 与 profile 绑定</p>
 
@@ -74,8 +74,8 @@
 
 基础规范是**与底层无关（substrate-independent）**的：`coord` 只是“某个抽象空间中的一个点”，`lane` 只是“一个分区 id”，依此类推——它们的具体含义由一个 **profile** 固定。
 
-- [`spec/kosmos.md`](spec/kosmos.md) — 通用语法（不含领域物理）。
-- [`spec/profiles/anima-consciousness-carving.md`](spec/profiles/anima-consciousness-carving.md) — 第一个 profile：将 `coord` / `lane` / `radius` / `tier` / `tags` 绑定到 `anima` 这一 Living Consciousness Agent 的 CONSCIOUSNESS-CARVING 范式。参考实现：[`dancinlab/anima`](https://github.com/dancinlab/anima)。具体的领域物理绑定完全位于该 profile 文件中。
+- [`spec/kosmos.md`](../spec/kosmos.md) — 通用语法（不含领域物理）。
+- [`spec/profiles/anima-consciousness-carving.md`](../spec/profiles/anima-consciousness-carving.md) — 第一个 profile：将 `coord` / `lane` / `radius` / `tier` / `tags` 绑定到 `anima` 这一 Living Consciousness Agent 的 CONSCIOUSNESS-CARVING 范式。参考实现：[`dancinlab/anima`](https://github.com/dancinlab/anima)。具体的领域物理绑定完全位于该 profile 文件中。
 
 profile 永远不会改变语法——它只绑定字段语义。新领域添加一个 profile 文件；通用规范保持纯净。
 
@@ -98,8 +98,8 @@ grep '^  @payload .* := ref ' *.kosmos
 grep -E '^  (coord|lane|radius|tier|tags) ' *.kosmos
 ```
 
-完整语法与 BNF 见 [`spec/kosmos.md`](spec/kosmos.md)，已写好的示例文件见 [`examples/`](examples/)。
+完整语法与 BNF 见 [`spec/kosmos.md`](../spec/kosmos.md)，已写好的示例文件见 [`examples/`](../examples/)。
 
 ## License
 
-[CC0-1.0](LICENSE) — 与同族格式相同。公共领域贡献声明（Public domain dedication）。
+[CC0-1.0](../LICENSE) — 与同族格式相同。公共领域贡献声明（Public domain dedication）。

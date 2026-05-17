@@ -4,7 +4,7 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><strong>[English](README.md) · [中文](README.zh.md) · [Русский](README.ru.md) · [日本語](README.ja.md) · [한국어](README.ko.md)</strong></p>
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · Русский · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 <p align="center"><strong>Мультимодальный манифест якорей знания (Multimodal Knowledge-Anchor Manifest)</strong> — координаты размещения ⊥ полезные нагрузки модальностей · кроссмодальная согласованность · привязка к profile</p>
 
@@ -74,8 +74,8 @@
 
 Базовая спецификация **не зависит от субстрата (substrate-independent)**: `coord` — это просто «точка в некотором абстрактном пространстве», `lane` — «идентификатор раздела» и так далее; их конкретный смысл фиксируется **profile**.
 
-- [`spec/kosmos.md`](spec/kosmos.md) — общая грамматика (без доменной физики).
-- [`spec/profiles/anima-consciousness-carving.md`](spec/profiles/anima-consciousness-carving.md) — первый profile: привязывает `coord` / `lane` / `radius` / `tier` / `tags` к парадигме CONSCIOUSNESS-CARVING агента `anima` (Living Consciousness Agent). Эталонная реализация: [`dancinlab/anima`](https://github.com/dancinlab/anima). Конкретные привязки доменной физики полностью находятся в этом файле profile.
+- [`spec/kosmos.md`](../spec/kosmos.md) — общая грамматика (без доменной физики).
+- [`spec/profiles/anima-consciousness-carving.md`](../spec/profiles/anima-consciousness-carving.md) — первый profile: привязывает `coord` / `lane` / `radius` / `tier` / `tags` к парадигме CONSCIOUSNESS-CARVING агента `anima` (Living Consciousness Agent). Эталонная реализация: [`dancinlab/anima`](https://github.com/dancinlab/anima). Конкретные привязки доменной физики полностью находятся в этом файле profile.
 
 Profile никогда не меняет грамматику — он лишь привязывает семантику полей. Новые домены добавляют файл profile; общая спецификация остаётся чистой.
 
@@ -98,8 +98,8 @@ grep '^  @payload .* := ref ' *.kosmos
 grep -E '^  (coord|lane|radius|tier|tags) ' *.kosmos
 ```
 
-Полную грамматику и BNF см. в [`spec/kosmos.md`](spec/kosmos.md), а проработанные файлы — в [`examples/`](examples/).
+Полную грамматику и BNF см. в [`spec/kosmos.md`](../spec/kosmos.md), а проработанные файлы — в [`examples/`](../examples/).
 
 ## License
 
-[CC0-1.0](LICENSE) — то же, что и у родственных форматов. Передача в общественное достояние (Public domain dedication).
+[CC0-1.0](../LICENSE) — то же, что и у родственных форматов. Передача в общественное достояние (Public domain dedication).

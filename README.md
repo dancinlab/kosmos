@@ -118,6 +118,14 @@ Verified against all `examples/*.kosmos` (0 errors) and a broken fixture
 (no `@anchor` raised). A Claude Code plugin can wire it via `.lsp.json`:
 `{ "kosmos": { "command": "kosmos-lsp", "extensionToLanguage": {".kosmos":"kosmos"} } }`.
 
+A tree-sitter grammar lives in `tree-sitter-kosmos/` for editors on the
+tree-sitter stack (Neovim, Helix, Zed, Emacs). Total line model — every
+line resolves to `comment` / `anchor` / `payload` / `edge` / `body` /
+`text` / `blank`, exposing `anchor_kw`, `payload_kw` and `edge_op` nodes
+for `queries/highlights.scm`. Verified: `tree-sitter parse` reaches **0
+ERROR** on all `examples/*.kosmos`. Build: `cd tree-sitter-kosmos &&
+tree-sitter generate`.
+
 ## License
 
 [CC0-1.0](LICENSE) — same as the sibling formats. Public domain dedication.

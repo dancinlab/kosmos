@@ -4,8 +4,6 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · 日本語 · <a href="README.ko.md">한국어</a></p>
-
 <p align="center"><strong>マルチモーダル知識アンカー・マニフェスト（Multimodal Knowledge-Anchor Manifest）</strong> — 配置座標 ⊥ モダリティ・ペイロード · クロスモーダル整合性 · profile 束縛</p>
 
 <p align="center">
@@ -17,6 +15,8 @@
 </p>
 
 <p align="center">行指向 · grep フレンドリー · tape v1.2 のスーパーセット · モダリティ非依存の配置 · profile が定義する意味論</p>
+
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · 日本語 · <a href="README.ko.md">한국어</a></p>
 
 ---
 

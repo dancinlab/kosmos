@@ -4,8 +4,6 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 한국어</p>
-
 <p align="center"><strong>멀티모달 지식 앵커 매니페스트(Multimodal Knowledge-Anchor Manifest)</strong> — 배치 좌표 ⊥ 모달리티 페이로드 · 교차모달 일관성 · profile 바인딩</p>
 
 <p align="center">
@@ -17,6 +15,8 @@
 </p>
 
 <p align="center">행 지향 · grep 친화 · tape v1.2 상위집합 · 모달리티 독립적 배치 · profile 이 정의하는 의미론</p>
+
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · 한국어</p>
 
 ---
 

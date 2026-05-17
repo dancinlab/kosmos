@@ -4,8 +4,6 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><a href="../README.md">EN</a> · 中文 · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
-
 <p align="center"><strong>多模态知识锚点清单（Multimodal Knowledge-Anchor Manifest）</strong> — 放置坐标 ⊥ 模态载荷 · 跨模态一致性 · 与 profile 绑定</p>
 
 <p align="center">
@@ -17,6 +15,8 @@
 </p>
 
 <p align="center">面向行 · 利于 grep · tape v1.2 超集 · 模态无关的放置 · 由 profile 定义语义</p>
+
+<p align="center"><a href="../README.md">EN</a> · 中文 · <a href="README.ru.md">Русский</a> · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 ---
 

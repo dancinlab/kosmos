@@ -4,8 +4,6 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center">EN · <a href="docs/README.zh.md">中文</a> · <a href="docs/README.ru.md">Русский</a> · <a href="docs/README.ja.md">日本語</a> · <a href="docs/README.ko.md">한국어</a></p>
-
 <p align="center"><strong>Multimodal Knowledge-Anchor Manifest</strong> — placement coords ⊥ modality payloads · cross-modal consistency · profile-bound</p>
 
 <p align="center">
@@ -17,6 +15,8 @@
 </p>
 
 <p align="center">Line-oriented · grep-friendly · tape v1.2 superset · modality-independent placement · profile-defined semantics</p>
+
+<p align="center">EN · <a href="docs/README.zh.md">中文</a> · <a href="docs/README.ru.md">Русский</a> · <a href="docs/README.ja.md">日本語</a> · <a href="docs/README.ko.md">한국어</a></p>
 
 ---
 

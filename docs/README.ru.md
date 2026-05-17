@@ -4,8 +4,6 @@
 
 <h1 align="center">⊙ kosmos</h1>
 
-<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · Русский · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
-
 <p align="center"><strong>Мультимодальный манифест якорей знания (Multimodal Knowledge-Anchor Manifest)</strong> — координаты размещения ⊥ полезные нагрузки модальностей · кроссмодальная согласованность · привязка к profile</p>
 
 <p align="center">
@@ -17,6 +15,8 @@
 </p>
 
 <p align="center">Построчный · удобный для grep · надмножество tape v1.2 · размещение, не зависящее от модальности · семантика, определяемая profile</p>
+
+<p align="center"><a href="../README.md">EN</a> · <a href="README.zh.md">中文</a> · Русский · <a href="README.ja.md">日本語</a> · <a href="README.ko.md">한국어</a></p>
 
 ---
 

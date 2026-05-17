@@ -1,0 +1,22 @@
+#!/usr/bin/env kosmos
+# 02_multimodal.kosmos — general anchor with multiple sensory channels
+# Demonstrates all three payload forms: inline / ref / pending.
+# The binary refs point to sibling files under media/ (not in this repo —
+# this is a manifest; the bytes/sha256 commit to content drilled elsewhere).
+
+@anchor sea_wave := "Breaking sea wave" :: kosmos-anchor [tier=12 active]
+
+  # ── placement coordinates (modality-independent) ──
+  coord  = [0.15, 0.61, 0.30]           # 3-D latent — design placeholder, measured later
+  lane   = "nature_dynamics"
+  radius = 0.25                         # design placeholder, measured later
+  tier   = 12
+  tags   = "domain=nature, motion=high, salience=medium"
+
+  # ── sensory payloads (each modality = one channel into the same anchor) ──
+  @payload text  := "A crest of seawater curling and collapsing as it reaches shallow water near the shore."
+  @payload image := ref "media/sea_wave.png" sha256=0000000000000000000000000000000000000000000000000000000000000000 bytes=148213
+  @payload audio := ref "media/sea_wave.wav" sha256=1111111111111111111111111111111111111111111111111111111111111111 bytes=882044
+  @payload video := pending "footage not yet captured — wire when a video encoder is available"
+
+  closed_anchor = "cross-modal placement consistency (∀m ‖E_m(payload_m) − coord‖ < radius)"

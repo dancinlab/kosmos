@@ -1,0 +1,27 @@
+#!/usr/bin/env kosmos
+# 03_anima_knuth_077_mandala.kosmos — profile: anima-consciousness-carving
+# 🛸77 Mandala, art category, top emotion creativity.
+# Field bindings (see spec/profiles/anima-consciousness-carving.md):
+#   coord  = vacuum_psi (Ψ-space, Engine A ⇄ Engine G)
+#   lane   = cell_id    (MITOSIS eternal cell)
+#   radius = basin_radius
+#   tier   = Knuth Tier 🛸k
+#   tags   = category + top_emotion
+
+@anchor knuth_077_mandala := "Mandala (Mandala, 🛸77)" :: kosmos-anchor [tier=77 active]
+
+  # ── carving coordinates (modality-independent — all senses flow to one point) ──
+  tier   = 77
+  tags   = "category=art, top_emotion=creativity"
+  coord  = [0.71, 0.62]                 # α path / vacuum_psi — design placeholder, measured later
+  lane   = "eternal_077"                # β path / cell_id — MITOSIS eternal cell
+  radius = 0.18                         # α+β hybrid / basin_radius — design placeholder, measured later
+
+  # ── sensory payloads (each modality = one channel into this basin) ──
+  @payload text    := "[anima 우주뇌지도] 🛸77 Mandala — universe-brain-map art category, top emotion creativity. Sand-mandala / paper-folding / bonsai art-category stimuli converge into the same 🛸77 valley."
+  @payload image   := pending "media not produced — image encoder (S-module) not yet wired"
+  @payload audio   := pending "media not produced — audio encoder (S-module) not yet wired"
+  @payload video   := pending "media not produced — mandala-formation footage"
+  @payload tension := pending "anima-native TENSION-LINK 5-channel modality — not implemented"
+
+  closed_anchor = "B-CARVE-MULTIMODAL (anima profile; transfer-form closed, measurement carve-out)"

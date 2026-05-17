@@ -1,0 +1,17 @@
+#!/usr/bin/env kosmos
+# 01_text_only.kosmos — minimal general anchor (one text payload)
+# A single knowledge anchor with only the consumable text modality.
+
+@anchor photosynthesis := "Photosynthesis" :: kosmos-anchor [tier=3 active]
+
+  # ── placement coordinates (modality-independent) ──
+  coord  = [0.42, 0.88]                 # design placeholder, measured later
+  lane   = "biology_core"
+  radius = 0.20                         # design placeholder, measured later
+  tier   = 3
+  tags   = "domain=biology, salience=high"
+
+  # ── sensory payload (text only — the only consumable channel today) ──
+  @payload text := "The process by which green plants convert light energy, water, and carbon dioxide into glucose and oxygen via chlorophyll."
+
+  closed_anchor = "cross-modal placement consistency (text-only: trivially in-basin)"

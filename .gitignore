@@ -1,0 +1,33 @@
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.zed/
+.idea/
+*.log
+*.tmp
+
+# Build artifacts
+build/
+dist/
+target/
+
+# Node
+node_modules/
+
+# Python bytecode
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local env
+.env
+.local/
+
+# hexa runtime hook markers
+state/
+
+# media binaries — .kosmos is a manifest, binary lives elsewhere
+media/

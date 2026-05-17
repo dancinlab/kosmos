@@ -100,6 +100,24 @@ grep -E '^  (coord|lane|radius|tier|tags) ' *.kosmos
 
 See [`spec/kosmos.md`](spec/kosmos.md) for the full grammar and BNF, and [`examples/`](examples/) for worked files.
 
+## Editor / LSP
+
+`lsp/kosmos_lsp.py` is a zero-dependency stdio LSP server (Python 3.8+) —
+spec-grounded diagnostics: exactly one `@anchor` (column 0), `@anchor`
+header shape, `@payload <modality> :=` form, 2-space body indent, the
+required placement triple `coord`/`lane`/`radius` (hint when missing),
+tape-v1.2 body leniency, BOM/CRLF — plus hover for `@anchor`/`@payload`
+and the coordinate fields.
+
+```bash
+bin/kosmos-lsp                # speak LSP on stdin/stdout
+bin/kosmos-lsp --check FILE   # one-shot lint (exit 1 on any error)
+```
+
+Verified against all `examples/*.kosmos` (0 errors) and a broken fixture
+(no `@anchor` raised). A Claude Code plugin can wire it via `.lsp.json`:
+`{ "kosmos": { "command": "kosmos-lsp", "extensionToLanguage": {".kosmos":"kosmos"} } }`.
+
 ## License
 
 [CC0-1.0](LICENSE) — same as the sibling formats. Public domain dedication.

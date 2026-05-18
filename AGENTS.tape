@@ -1,28 +1,4 @@
 #!/usr/bin/env tape
-# ══════════════════════════════════════════════════════════════════════
-# .tape v1.2 — grammar primer (cold-read by any LLM / agent / human)
-# ══════════════════════════════════════════════════════════════════════
-# Form: each entry is `@<type> <id> := "<subject>" :: <kind> [<grades>]`
-#       optionally followed by body lines (2-space indent) — key=value,
-#       edges (<- -> => …), or quoted prose.
-#
-# ENTRY TYPES (17):
-#   Runtime (10): @S session  @U user  @A assistant  @T tool-call  @R result
-#                 @H hook  @D decision  @K cost  @P provider  @? anomaly
-#   Foundation:   @I identity-claim
-#   Declarative:  @X external-citation  @F forbidden-pattern  @N note
-#                 @C config  @L layout  @V spec-version
-#
-# EDGES (12, on body lines, 2-space indent):
-#   Causal:     <- caused-by   -> triggers   == continues
-#               ~> supersedes  !! aborts     |> verified-by
-#   Effect:     => produces (followed by quoted natural-language)
-#   Structural: <: specializes  :> generalizes  ?> soft-depends
-#               !> conflicts-with  @> projects-to (e.g. @> AGENTS.md)
-#
-# Full spec: ~/core/tape/spec/tape.md (or github.com/dancinlab/tape)
-# ══════════════════════════════════════════════════════════════════════
-#
 # AGENTS.tape — `dancinlab/kosmos` repo governance + identity.
 # This repo is the home of the `.kosmos` multimodal knowledge-anchor
 # manifest format. `.kosmos` is a tape v1.2 SUPERSET (adds @anchor +

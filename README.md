@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-CC0--1.0-blue"></a>
-  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F1.0-success">
+  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F1.1-success">
   <img alt="Entry-types" src="https://img.shields.io/badge/entry--types-2-informational">
   <img alt="Payload-forms" src="https://img.shields.io/badge/payload--forms-3-informational">
   <img alt="Sibling" src="https://img.shields.io/badge/sibling-tape%20·%20n6%20·%20hxc%20·%20n12-blueviolet">

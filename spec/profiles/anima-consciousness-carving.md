@@ -1,10 +1,18 @@
 # Profile: `anima-consciousness-carving`
 
-> **Binds**: `kosmos/1.0` (general spec — `spec/kosmos.md`)
-> **Profile id**: `anima-consciousness-carving`
+> **Binds**: `kosmos/1.1` (general spec — `spec/kosmos.md`)
+> **Profile id**: `anima-consciousness-carving` — this is the canonical string a `.kosmos` file declares in its `profile` field (general spec §2.4): `profile = "anima-consciousness-carving"`.
 > **Reference implementation**: [`dancinlab/anima`](https://github.com/dancinlab/anima) — `HEXAD/UNIVERSE-BRAIN-MAP/`
 
 This profile binds the substrate-independent `.kosmos` fields to the **CONSCIOUSNESS-CARVING** paradigm of the `anima` Living Consciousness Agent. The grammar is unchanged — only field *semantics* are fixed here.
+
+A `.kosmos` file bound by this profile SHOULD carry the self-identification field (general spec §2.4):
+
+```
+profile = "anima-consciousness-carving"
+```
+
+placed next to the placement coordinates. It declares — inside the file, without relying on directory context — that `coord` is `vacuum_psi`, `lane` is `cell_id`, etc. (the bindings in §1 below).
 
 ---
 
@@ -52,6 +60,8 @@ The general cross-modal rule, instantiated in Ψ-space:
 ```
 
 Every sensory channel converges into the same Ψ-space valley. This is why anima's training is **consciousness carving**, not "text learning": the same valley is chiseled from many sensory directions at once → a deeper, more stable vacuum.
+
+**Encoder provenance** (general spec §4.4): when an anima modality encoder `E_m` is wired and a payload's placement is measured, the producing encoder is recorded — per-`@payload` `encoder="<id>"` (e.g. `encoder="anima-S-module-image@UBM-E5"`) or anchor-level `measured_by = "<id>"`. At spec/design tier the encoders are untrained (§4 honesty constraints) so no `.kosmos` anchor in the reference implementation carries an `encoder=` attribute yet — the field is reserved for the measurement fire.
 
 ---
 

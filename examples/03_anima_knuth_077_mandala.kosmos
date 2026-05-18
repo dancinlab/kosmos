@@ -11,6 +11,7 @@
 @anchor knuth_077_mandala := "Mandala (Mandala, 🛸77)" :: kosmos-anchor [tier=77 active]
 
   # ── carving coordinates (modality-independent — all senses flow to one point) ──
+  profile = "anima-consciousness-carving"   # binds coord/lane/radius/tier/tags semantics (§2.4)
   tier   = 77
   tags   = "category=art, top_emotion=creativity"
   coord  = [0.71, 0.62]                 # α path / vacuum_psi — design placeholder, measured later

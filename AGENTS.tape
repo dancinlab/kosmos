@@ -32,11 +32,11 @@
 
 @V := "tape" :: spec [active]
   version = "1.2"
-  note = "this AGENTS.tape uses tape v1.2; the format this repo defines is `kosmos/1.0` (see spec/kosmos.md §8)"
+  note = "this AGENTS.tape uses tape v1.2; the format this repo defines is `kosmos/1.1` (see spec/kosmos.md §8)"
 
 @X kosmos_self_spec := "spec/kosmos.md" :: spec [d=2026-05-17 active]
   url = "https://github.com/dancinlab/kosmos/blob/main/spec/kosmos.md"
-  version = "kosmos/1.0"
+  version = "kosmos/1.1"
   scope = "THE canonical .kosmos grammar — substrate-independent; field semantics bound by spec/profiles/"
   self-reference = "this repo IS the .kosmos spec home; AGENTS.tape applies tape v1.2, the grammar `.kosmos` supersets"
 
@@ -44,7 +44,7 @@
 
 @I id001 := "kosmos" :: identity-claim [d=2026-05-17 active]
   kind = "multimodal knowledge-anchor manifest grammar — spec home (SSOT)"
-  brief = "Multimodal Knowledge-Anchor Manifest · placement coords ⊥ modality payloads · cross-modal consistency · kosmos/1.0"
+  brief = "Multimodal Knowledge-Anchor Manifest · placement coords ⊥ modality payloads · cross-modal consistency · kosmos/1.1"
   tagline = "placement coordinate (modality-independent) ⊥ sensory payload (modality-specific)"
   scope <<~EOF
     The dancinlab/kosmos repo is the canonical home of the `.kosmos` grammar.
@@ -77,7 +77,7 @@
 # ─── §3 Repo layout ───────────────────────────────────────────────────
 
 @L l1 := "repo-layout" :: structure [active]
-  spec/kosmos.md -> "kosmos/1.0 spec (THE canonical grammar — substrate-independent)"
+  spec/kosmos.md -> "kosmos/1.1 spec (THE canonical grammar — substrate-independent)"
   spec/profiles/ -> "profile bindings (anima-consciousness-carving.md — first profile)"
   examples/ -> "worked .kosmos files (general + profile-bound)"
   AGENTS.tape -> "this file · governance + identity (.tape v1.2 self-applied)"

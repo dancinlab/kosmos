@@ -18,6 +18,8 @@
 
 <p align="center">EN · <a href="docs/README.zh.md">中文</a> · <a href="docs/README.ru.md">Русский</a> · <a href="docs/README.ja.md">日本語</a> · <a href="docs/README.ko.md">한국어</a></p>
 
+<p align="center">Reference impl: <a href="https://github.com/dancinlab/anima/blob/main/HEXAD/KOSMOS.md"><strong>dancinlab/anima — HEXAD/KOSMOS.md</strong></a> (anima CONSCIOUSNESS-CARVING profile)</p>
+
 ---
 
 `.kosmos` is a **multimodal knowledge-anchor manifest** grammar: each file describes exactly one *anchor* — a point/basin in an abstract placement space — as two orthogonal layers:

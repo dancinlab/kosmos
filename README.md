@@ -32,6 +32,16 @@ A `.kosmos` file commits to **cross-modal consistency**: every payload, once pas
 > [!NOTE]
 > Fifth sibling format of [`tape`](https://github.com/dancinlab/tape) (operational / causal-temporal trace), [`n6`](https://github.com/dancinlab/n6) (semantic / atlas layer), [`hxc`](https://github.com/dancinlab/hxc) (byte-canonical wire), and [`n12`](https://github.com/dancinlab/n12) (12-axis sparse cube). `.kosmos` is the **multimodal knowledge-anchor placement** layer — where a piece of knowledge sits in an abstract space, and which sensory channels feed it. It is orthogonal to the four: `tape` is *what happened*, `n6` is *what it means*, `hxc` is *the canonical bytes*, `n12` is *the sparse cube projection*, `kosmos` is *where it is anchored & by which senses*.
 
+## Install
+
+```bash
+# 1. Install hexa-lang (gives you `hexa` + `hx` package manager)
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/dancinlab/hexa-lang/main/install.sh)"
+
+# 2. Install kosmos
+hx install kosmos
+```
+
 ## At a glance
 
 ```kosmos

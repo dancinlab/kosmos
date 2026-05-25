@@ -104,20 +104,28 @@ See [`spec/kosmos.md`](spec/kosmos.md) for the full grammar and BNF, and [`examp
 
 ## Editor / LSP
 
-`lsp/kosmos_lsp.py` is a zero-dependency stdio LSP server (Python 3.8+) —
-spec-grounded diagnostics: exactly one `@anchor` (column 0), `@anchor`
-header shape, `@payload <modality> :=` form, 2-space body indent, the
-required placement triple `coord`/`lane`/`radius` (hint when missing),
-tape-v1.2 body leniency, BOM/CRLF — plus hover for `@anchor`/`@payload`
-and the coordinate fields.
+`lsp/kosmos_lsp.hexa` is the **canonical** hexa-native linter (project.tape
+`@D k_hexa_native`) — spec-grounded diagnostics: exactly one `@anchor`
+(column 0), `@anchor` header shape, `@payload <modality> :=` form, 2-space
+body indent, the required placement triple `coord`/`lane`/`radius` (hint
+when missing), tape-v1.2 body leniency, BOM/CRLF — plus hover for
+`@anchor`/`@payload` and the coordinate fields.
 
 ```bash
+bin/kosmos-lsp --check FILE   # one-shot lint (exit 1 on any error) — hexa-native
 bin/kosmos-lsp                # speak LSP on stdin/stdout
-bin/kosmos-lsp --check FILE   # one-shot lint (exit 1 on any error)
 ```
 
-Verified against all `examples/*.kosmos` (0 errors) and a broken fixture
-(no `@anchor` raised). A Claude Code plugin can wire it via `.lsp.json`:
+`bin/kosmos-lsp --check` runs the hexa port (`lsp/kosmos_lsp.hexa`); the
+interactive stdio JSON-RPC server still runs `lsp/kosmos_lsp.py`
+(**DEPRECATED**, retained only because hexa 0.1.0-dispatch has no incremental
+raw N-byte stdin read for LSP Content-Length framing on a live editor pipe —
+see the `.hexa` header). The hexa `validate()` / `hover()` are byte-parity
+with the `.py` over 22 corpus files + 45 hover lines
+(`lsp/PARITY_VERIFY.log`).
+
+Verified against all clean anchors (0 errors) and broken fixtures
+(`lsp/test_fixtures/`). A Claude Code plugin can wire it via `.lsp.json`:
 `{ "kosmos": { "command": "kosmos-lsp", "extensionToLanguage": {".kosmos":"kosmos"} } }`.
 
 A tree-sitter grammar lives in `tree-sitter-kosmos/` for editors on the

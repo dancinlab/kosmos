@@ -1,0 +1,5 @@
+@anchor bad anchor here
+    coord = [0.1, 0.2]
+  lane = "x"
+  radius = 0.5
+  this is not valid

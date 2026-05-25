@@ -1,3 +1,11 @@
 #!/usr/bin/env sh
+# kosmos-lsp launcher. G2 (project.tape @D k_hexa_native): the canonical linter
+# is lsp/kosmos_lsp.hexa. `--check FILE` (CI lint) routes to the hexa-native
+# port; the interactive stdio JSON-RPC server stays on the DEPRECATED .py until
+# hexa gains incremental raw stdin reads (see kosmos_lsp.hexa header / .py note).
 dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+hexa_bin="$HOME/.hx/bin/hexa"
+if [ "$1" = "--check" ] && [ -x "$hexa_bin" ]; then
+  exec "$hexa_bin" run --no-sentinel "$dir/lsp/kosmos_lsp.hexa" "$@"
+fi
 exec python3 "$dir/lsp/kosmos_lsp.py" "$@"

@@ -1,0 +1,583 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  kosmos_lsp.hexa — canonical linter for the `.kosmos` manifest grammar.
+//
+//  hexa-native port of lsp/kosmos_lsp.py (G2 · project.tape @D k_hexa_native:
+//  "keep a non-hexa canonical LSP" → dont). Spec-grounded diagnostics from
+//  spec/kosmos.md. `.kosmos` is a superset of tape v1.2 adding exactly two
+//  entry types: @anchor (exactly one per file, at top) and @payload (2-space
+//  body). Required placement triple: coord / lane / radius. Conservative —
+//  missing optional structure is a hint (sev 2).
+//
+//    hexa run lsp/kosmos_lsp.hexa --check FILE   # one-shot lint (exit 1 on error)
+//
+//  ── PORTING SCOPE (HONEST) ──────────────────────────────────────────────────
+//  PORTED:  validate(text)  — full diagnostic engine, regex → string ops.
+//           --check FILE     — one-shot CI lint, byte-parity with the .py.
+//                              (CRLF normalized to LF first, matching Python
+//                              text-mode universal-newlines, so a CRLF file
+//                              does NOT raise the LF diagnostic under --check.)
+//           hover(line)      — spec hover strings (exposed via --hover for parity
+//                              testing; the .py used it only inside the server).
+//
+//  NOT PORTED (HONEST TODO): the interactive stdio JSON-RPC server (serve()).
+//    The LSP protocol frames each message as `Content-Length: N\r\n\r\n<N raw
+//    bytes>` and the editor keeps the pipe open indefinitely, interleaving
+//    requests and responses. That needs an *incremental, raw N-byte* stdin read
+//    against a never-closing pipe. The hexa runtime (0.1.0-dispatch) exposes
+//    only:
+//        read_stdin()  — slurps ALL of fd 0, BLOCKING until EOF (an editor
+//                        never sends EOF mid-session → deadlock);
+//        input(prompt) — line-based, strips \r, and returns "" (not void) at
+//                        EOF, so it can neither detect EOF nor read a non-line-
+//                        aligned JSON body of exactly N bytes.
+//    Neither primitive can do Content-Length framing on a live pipe, so a
+//    faithful interactive server is not portable today. When hexa gains a raw
+//    `read_stdin_n(n)` / fd-0 byte read, port serve() from the .py (validate /
+//    hover below are already server-ready). Until then bin/kosmos-lsp keeps the
+//    .py for live editor sessions; --check (CI) is fully hexa-native here.
+//
+//  HARD CONSTRAINTS (anima/hexa house rules):
+//    - pure-hexa, COMPILED-ONLY · NO top-level main() call (fn main auto-fires)
+//    - dict literal #{}, missing key → void · strings are byte-indexed
+//    - regex unavailable → reimplemented with starts_with / index_of / split
+//
+//  SSOT: spec/kosmos.md (grammar) · spec/profiles/*.md (field semantics)
+// ════════════════════════════════════════════════════════════════════════════
+
+
+// ── §0 string helpers ────────────────────────────────────────────────────────
+
+// is a 1-char string an ASCII space?
+fn k_is_space(c: string) -> bool {
+    return c == " "
+}
+
+// is a 1-char string ASCII whitespace per Python `\s` (space/tab/CR/LF/FF/VT)?
+fn k_is_ws(c: string) -> bool {
+    if c == " "  { return true }
+    if c == "\t" { return true }
+    if c == "\r" { return true }
+    if c == "\n" { return true }
+    return false
+}
+
+// does s start with prefix (no trim)?
+fn k_starts_with(s: string, prefix: string) -> bool {
+    let ls = len(s)
+    let lp = len(prefix)
+    if lp > ls { return false }
+    return s.substring(0, lp) == prefix
+}
+
+// is `s` non-empty and consist only of ASCII space chars? (Python `.strip()` /
+// blank detection helper)
+fn k_is_blank(s: string) -> bool {
+    let n = len(s)
+    let mut i = 0
+    while i < n {
+        if k_is_space(s.substring(i, i + 1)) == false { return false }
+        i = i + 1
+    }
+    return true
+}
+
+// rstrip a single trailing "\r" (Python `s.rstrip("\r")` over a line that the
+// outer split already removed "\n" from — strips ALL trailing \r, which for a
+// single line is at most one).
+fn k_rstrip_cr(s: string) -> string {
+    let mut n = len(s)
+    while n > 0 {
+        if s.substring(n - 1, n) == "\r" { n = n - 1 }
+        else { break }
+    }
+    return s.substring(0, n)
+}
+
+// Python `.strip()` — trim leading+trailing ASCII whitespace (\s class).
+fn k_strip(s: string) -> string {
+    let n = len(s)
+    if n <= 0 { return "" }
+    let mut a = 0
+    while a < n {
+        if k_is_ws(s.substring(a, a + 1)) { a = a + 1 }
+        else { break }
+    }
+    if a >= n { return "" }
+    let mut b = n
+    while b > a {
+        if k_is_ws(s.substring(b - 1, b)) { b = b - 1 }
+        else { break }
+    }
+    return s.substring(a, b)
+}
+
+// Python `.lstrip(" ")` — count leading ASCII spaces (the indent width).
+fn k_indent(s: string) -> int {
+    let n = len(s)
+    let mut a = 0
+    while a < n {
+        if k_is_space(s.substring(a, a + 1)) { a = a + 1 }
+        else { break }
+    }
+    return a
+}
+
+// the first whitespace-delimited token of s (Python `s.split(" ", 1)[0]` uses
+// only space; we mirror that exactly — split on the first ASCII space).
+fn k_first_token_space(s: string) -> string {
+    let sp = s.index_of(" ")
+    if sp < 0 { return s }
+    return s.substring(0, sp)
+}
+
+
+// ── §1 mini-regex equivalents (string-op reimplementations) ──────────────────
+//
+// The .py uses 4 compiled patterns. Each is reproduced as an accept predicate
+// over the EXACT same input the .py feeds it.
+
+// PAYLOAD = re.compile(r"^@payload\s+\S+\s*:=")
+//   ^@payload  then ≥1 ws  then ≥1 non-ws  then any ws*  then literal ":="
+//   matched against a STRIPPED body line `t` (so no leading indent).
+fn k_match_payload(t: string) -> bool {
+    if k_starts_with(t, "@payload") == false { return false }
+    let n = len(t)
+    let mut i = 8                       // after "@payload"
+    // \s+ : at least one ws
+    let mut ws1 = 0
+    while i < n {
+        if k_is_ws(t.substring(i, i + 1)) { i = i + 1 ws1 = ws1 + 1 }
+        else { break }
+    }
+    if ws1 == 0 { return false }
+    // \S+ : at least one non-ws
+    let mut nw = 0
+    while i < n {
+        if k_is_ws(t.substring(i, i + 1)) { break }
+        i = i + 1 nw = nw + 1
+    }
+    if nw == 0 { return false }
+    // \s* : any ws
+    while i < n {
+        if k_is_ws(t.substring(i, i + 1)) { i = i + 1 }
+        else { break }
+    }
+    // literal ":="
+    if i + 2 > n { return false }
+    return t.substring(i, i + 2) == ":="
+}
+
+// KV = re.compile(r"^\S+\s*=")
+//   ^ ≥1 non-ws  then ws*  then literal "="   (matched against stripped `t`)
+fn k_match_kv(t: string) -> bool {
+    let n = len(t)
+    if n == 0 { return false }
+    let mut i = 0
+    // \S+
+    let mut nw = 0
+    while i < n {
+        if k_is_ws(t.substring(i, i + 1)) { break }
+        i = i + 1 nw = nw + 1
+    }
+    if nw == 0 { return false }
+    // \s*
+    while i < n {
+        if k_is_ws(t.substring(i, i + 1)) { i = i + 1 }
+        else { break }
+    }
+    // literal "="
+    if i >= n { return false }
+    return t.substring(i, i + 1) == "="
+}
+
+// ANCHOR = re.compile(
+//   r'^@anchor\s+\S+\s*:=\s*".*?"\s*::\s*\S+\s*(?:\[[^\]\n]*\])?\s*$')
+//   matched against the RAW line `s` (.py: ANCHOR.match(s)). `s` has \r already
+//   stripped. Because of universal-newline / split semantics there is no \n in
+//   s, so [^\]\n] is just [^\]] here.
+//   `.*?` (lazy) + the rest is reproduced by scanning structurally.
+fn k_match_anchor(s: string) -> bool {
+    let n = len(s)
+    // ^@anchor
+    if k_starts_with(s, "@anchor") == false { return false }
+    let mut i = 7                       // after "@anchor"
+    // \s+
+    let mut ws1 = 0
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 ws1 = ws1 + 1 } else { break } }
+    if ws1 == 0 { return false }
+    // \S+  (the id)
+    let mut nw = 0
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { break } i = i + 1 nw = nw + 1 }
+    if nw == 0 { return false }
+    // \s*
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    // literal ":="
+    if i + 2 > n { return false }
+    if s.substring(i, i + 2) != ":=" { return false }
+    i = i + 2
+    // \s*
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    // ".*?" — opening quote, then lazy any up to the NEXT quote. Lazy means we
+    // take the FIRST closing quote that still lets the remainder match. Since
+    // everything after the name only consumes ws/`::`/token/optional[..]/ws$,
+    // and a quote cannot appear in those required tokens (`::`, \S+, ws), the
+    // first closing double-quote is the correct (and only viable) split.
+    if i >= n { return false }
+    if s.substring(i, i + 1) != "\"" { return false }
+    i = i + 1
+    let close = s.substring(i, n).index_of("\"")
+    if close < 0 { return false }
+    i = i + close + 1                   // past the closing quote
+    // \s*
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    // literal "::"
+    if i + 2 > n { return false }
+    if s.substring(i, i + 2) != "::" { return false }
+    i = i + 2
+    // \s*
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    // \S+  (the kind token, e.g. kosmos-anchor)
+    let mut kw = 0
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { break } i = i + 1 kw = kw + 1 }
+    if kw == 0 { return false }
+    // \s*
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    // (?:\[[^\]]*\])?  — optional grade-tag bracket
+    if i < n {
+        if s.substring(i, i + 1) == "[" {
+            i = i + 1
+            // [^\]]*  up to a closing ]
+            while i < n {
+                if s.substring(i, i + 1) == "]" { break }
+                i = i + 1
+            }
+            if i >= n { return false }     // no closing ] → group can't match
+            if s.substring(i, i + 1) != "]" { return false }
+            i = i + 1
+        }
+    }
+    // \s*$
+    while i < n { if k_is_ws(s.substring(i, i + 1)) { i = i + 1 } else { break } }
+    return i == n
+}
+
+// HEREDOC = re.compile(r"<<~?([A-Za-z_][\w-]*)\s*$")  — re.search over `t`.
+// returns the tag (group 1) or "" if no match. \w = [A-Za-z0-9_].
+fn k_is_word_char(c: string) -> bool {
+    if c >= "A" { if c <= "Z" { return true } }
+    if c >= "a" { if c <= "z" { return true } }
+    if c >= "0" { if c <= "9" { return true } }
+    if c == "_" { return true }
+    return false
+}
+fn k_heredoc_tag(t: string) -> string {
+    // search: try each start position for "<<" then optional "~" then a tag.
+    let n = len(t)
+    let mut start = 0
+    while start < n {
+        if start + 2 <= n {
+            if t.substring(start, start + 2) == "<<" {
+                let mut j = start + 2
+                if j < n { if t.substring(j, j + 1) == "~" { j = j + 1 } }
+                // [A-Za-z_] first
+                if j < n {
+                    let c0 = t.substring(j, j + 1)
+                    let alpha0 = k_is_word_char(c0) && (c0 < "0" || c0 > "9")
+                    if alpha0 {
+                        let tag_start = j
+                        j = j + 1
+                        // [\w-]*
+                        while j < n {
+                            let c = t.substring(j, j + 1)
+                            if k_is_word_char(c) || c == "-" { j = j + 1 }
+                            else { break }
+                        }
+                        let tag = t.substring(tag_start, j)
+                        // \s*$  — only ws to end of line
+                        let mut k = j
+                        let mut ok = true
+                        while k < n {
+                            if k_is_ws(t.substring(k, k + 1)) { k = k + 1 }
+                            else { ok = false break }
+                        }
+                        if ok { return tag }
+                    }
+                }
+            }
+        }
+        start = start + 1
+    }
+    return ""
+}
+
+// the 12 tape edge tokens (.py EDGES tuple).
+fn k_is_edge(tok: string) -> bool {
+    if tok == "<-" { return true }
+    if tok == "->" { return true }
+    if tok == "=>" { return true }
+    if tok == "==" { return true }
+    if tok == "~>" { return true }
+    if tok == "|>" { return true }
+    if tok == "!!" { return true }
+    if tok == "<:" { return true }
+    if tok == ":>" { return true }
+    if tok == "?>" { return true }
+    if tok == "!>" { return true }
+    if tok == "@>" { return true }
+    return false
+}
+
+
+// ── §2 diagnostic record ─────────────────────────────────────────────────────
+//
+// mirrors the .py diag(): #{ line, c0, c1, severity, message }. We carry only
+// the fields --check / parity needs (line + severity + message); range columns
+// (c0/c1) are kept for a future server port but unused by --check output.
+
+fn k_diag(ln: int, c0: int, c1: int, msg: string, sev: int) -> any {
+    return #{
+        "line": ln,
+        "c0": c0,
+        "c1": c1,
+        "severity": sev,
+        "message": msg
+    }
+}
+
+
+// ── §3 validate(text) — the diagnostic engine (faithful port) ────────────────
+
+fn k_validate(text: string) -> array {
+    let mut out = []
+
+    // BOM check: Python `text.startswith("﻿")`. read_file is byte-faithful
+    // so the BOM is the 3 UTF-8 bytes ef bb bf (239 187 191) at offset 0..2.
+    if len(text) >= 3 {
+        if byte_at(text, 0) == 239 {
+            if byte_at(text, 1) == 187 {
+                if byte_at(text, 2) == 191 {
+                    out = out.push(k_diag(0, 0, 1, "byte-canonical: UTF-8 with no BOM", 1))
+                }
+            }
+        }
+    }
+    // CR check: Python `"\r" in text`.
+    if text.index_of("\r") >= 0 {
+        out = out.push(k_diag(0, 0, 1, "byte-canonical: LF line endings only", 1))
+    }
+
+    let lines = text.split("\n")
+    let nlines = len(lines)
+    let mut anchors = 0
+    let mut anchor_ln = -1
+    // `seen` set of triple keys present → track via 3 bools.
+    let mut seen_coord = false
+    let mut seen_lane = false
+    let mut seen_radius = false
+    let mut heredoc = ""           // "" = not in a heredoc
+    let mut in_heredoc = false
+
+    let mut i = 0
+    while i < nlines {
+        let raw = to_string(lines[i])
+        let s = k_rstrip_cr(raw)              // s = raw.rstrip("\r")
+
+        if in_heredoc {
+            if k_strip(s) == heredoc { in_heredoc = false heredoc = "" }
+            i = i + 1
+        } else {
+            let t = k_strip(s)
+            if t == "" || k_starts_with(t, "#") {
+                i = i + 1
+            } else {
+                let indent = k_indent(s)
+                if k_starts_with(s, "@anchor") {
+                    anchors = anchors + 1
+                    anchor_ln = i
+                    if indent != 0 {
+                        out = out.push(k_diag(i, 0, len(s), "@anchor must be at column 0", 1))
+                    } else {
+                        if k_match_anchor(s) == false {
+                            out = out.push(k_diag(i, 0, len(s),
+                                "malformed @anchor — expected `@anchor <id> := " +
+                                "\"<name>\" :: kosmos-anchor [tier=<N> active]`", 1))
+                        }
+                    }
+                    i = i + 1
+                } else {
+                    if k_starts_with(s, "@") {
+                        out = out.push(k_diag(i, 0, len(s),
+                            "only @anchor is a column-0 entry; @payload and fields " +
+                            "are 2-space body lines", 1))
+                        i = i + 1
+                    } else {
+                        // body line
+                        if indent != 2 {
+                            out = out.push(k_diag(i, 0, len(s),
+                                "body line indented exactly 2 spaces (under @anchor)", 1))
+                            i = i + 1
+                        } else {
+                            let tag = k_heredoc_tag(t)
+                            if tag != "" {
+                                heredoc = tag
+                                in_heredoc = true
+                                i = i + 1
+                            } else {
+                                if k_starts_with(t, "@payload") {
+                                    if k_match_payload(t) == false {
+                                        out = out.push(k_diag(i, 2, len(s),
+                                            "malformed @payload — expected " +
+                                            "`@payload <modality> := ...`", 1))
+                                    }
+                                    i = i + 1
+                                } else {
+                                    // key = t.split("=",1)[0].strip() if "=" in t else ""
+                                    let mut key = ""
+                                    let eq = t.index_of("=")
+                                    if eq >= 0 { key = k_strip(t.substring(0, eq)) }
+                                    if key == "coord"  { seen_coord = true }
+                                    if key == "lane"   { seen_lane = true }
+                                    if key == "radius" { seen_radius = true }
+                                    // tok = t.split(" ",1)[0]
+                                    let tok = k_first_token_space(t)
+                                    let recognised =
+                                        k_is_edge(tok) ||
+                                        k_starts_with(t, "\"") ||
+                                        k_starts_with(t, "`") ||
+                                        k_match_kv(t)
+                                    if recognised == false {
+                                        out = out.push(k_diag(i, 2, len(s),
+                                            "unrecognised body form — coord/lane/radius/tier/tags, " +
+                                            "an edge, `key = val`, or \"prose\"", 2))
+                                    }
+                                    i = i + 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if anchors == 0 {
+        out = out.push(k_diag(0, 0, 1,
+            "a .kosmos file must contain exactly one @anchor entry", 1))
+    } else {
+        if anchors > 1 {
+            out = out.push(k_diag(anchor_ln, 0, 1,
+                "exactly one @anchor per file (one anchor = one file)", 1))
+        } else {
+            // miss = [k for k in TRIPLE if k not in seen]  (ordered coord/lane/radius)
+            let mut miss = ""
+            if seen_coord == false { miss = "coord" }
+            if seen_lane == false {
+                if miss == "" { miss = "lane" } else { miss = miss + ", lane" }
+            }
+            if seen_radius == false {
+                if miss == "" { miss = "radius" } else { miss = miss + ", radius" }
+            }
+            if miss != "" {
+                out = out.push(k_diag(anchor_ln, 0, 1,
+                    "missing required placement field(s): " + miss +
+                    " (coord/lane/radius are the required triple)", 2))
+            }
+        }
+    }
+    return out
+}
+
+
+// ── §4 hover(line) — spec hover strings (faithful port) ──────────────────────
+
+fn k_hover(line: string) -> string {
+    let s = k_strip(line)
+    if k_starts_with(s, "@anchor") {
+        return "**@anchor** — the one knowledge anchor (placement basin)"
+    }
+    if k_starts_with(s, "@payload") {
+        return "**@payload** — one sensory channel into the anchor"
+    }
+    if k_starts_with(s, "coord")  { return "**coord** — anchor placement (float vector, dim ≥ 1)" }
+    if k_starts_with(s, "lane")   { return "**lane** — partition / lane id (quoted string)" }
+    if k_starts_with(s, "radius") { return "**radius** — influence radius in coord space (float > 0)" }
+    if k_starts_with(s, "tier")   { return "**tier** — ordinal / rank (optional)" }
+    if k_starts_with(s, "tags")   { return "**tags** — free annotation (optional)" }
+    return ""
+}
+
+
+// ── §5 --check FILE — one-shot lint (faithful port of main()) ────────────────
+//
+// Python: open(path, encoding="utf-8", errors="replace").read() — TEXT mode,
+// so universal-newlines normalize CRLF→LF before validate() runs. We replicate
+// that by stripping every "\r\n"→"\n" (and a lone "\r"→"\n") so --check is
+// byte-parity with the reference .py (a CRLF file does NOT raise the LF diag
+// under --check, only over the live LSP path).
+
+fn k_normalize_newlines(s: string) -> string {
+    // CRLF → LF
+    let mut a = s.replace("\r\n", "\n")
+    // remaining lone CR → LF (Python universal newlines treats bare \r as \n)
+    a = a.replace("\r", "\n")
+    return a
+}
+
+fn k_check_file(path: string) -> int {
+    let raw = read_file(path)
+    let text = k_normalize_newlines(raw)
+    let ds = k_validate(text)
+    let nd = len(ds)
+    let mut any_error = false
+    let mut i = 0
+    while i < nd {
+        let d = ds[i]
+        let ln = to_int(d["line"]) + 1
+        let sev = to_int(d["severity"])
+        let mut prefix = ""
+        if sev != 1 { prefix = "[hint] " }
+        println(path + ":" + to_string(ln) + ": " + prefix + to_string(d["message"]))
+        if sev == 1 { any_error = true }
+        i = i + 1
+    }
+    if any_error { return 1 }
+    return 0
+}
+
+
+// ── §6 entrypoint ────────────────────────────────────────────────────────────
+//
+// args() = [binary, arg1, arg2, ...] (NO script path). Mirrors the .py CLI:
+//   --check FILE  → lint, exit 1 on error
+//   --hover FILE LINENO → print the hover string for a 0-based line (parity aid;
+//                          the .py only used hover() inside serve()).
+//   (no stdio server — see header HONEST TODO.)
+
+fn main() {
+    let a = args()
+    let argc = len(a)
+    if argc >= 3 {
+        if to_string(a[1]) == "--check" {
+            let rc = k_check_file(to_string(a[2]))
+            exit(rc)
+        }
+        if to_string(a[1]) == "--hover" {
+            if argc >= 4 {
+                let text = read_file(to_string(a[2]))
+                let lines = text.split("\n")
+                let ln = to_int(a[3])
+                if ln >= 0 && ln < len(lines) {
+                    let hv = k_hover(to_string(lines[ln]))
+                    if hv != "" { println(hv) }
+                }
+                exit(0)
+            }
+        }
+    }
+    // No --check / --hover: the interactive stdio server is not portable yet
+    // (see header HONEST TODO). Emit usage on stderr-equivalent and exit non-2.
+    println("kosmos-lsp (hexa): usage — hexa run lsp/kosmos_lsp.hexa --check FILE")
+    println("  (the interactive stdio JSON-RPC server is not yet hexa-portable;")
+    println("   bin/kosmos-lsp uses the .py for live editor sessions. see header.)")
+    exit(0)
+}

@@ -17,24 +17,26 @@
 //                              text-mode universal-newlines, so a CRLF file
 //                              does NOT raise the LF diagnostic under --check.)
 //           hover(line)      — spec hover strings (exposed via --hover for parity
-//                              testing; the .py used it only inside the server).
+//                              testing; also wired into the live server below).
+//           serve()          — interactive stdio JSON-RPC server. Live editor
+//                              sessions are now fully hexa-native: framed
+//                              Content-Length read/write, whitespace-tolerant
+//                              JSON extraction, and the initialize / shutdown /
+//                              exit / didOpen / didChange / didClose / hover
+//                              dispatch — reusing k_validate + k_hover above.
 //
-//  NOT PORTED (HONEST TODO): the interactive stdio JSON-RPC server (serve()).
-//    The LSP protocol frames each message as `Content-Length: N\r\n\r\n<N raw
-//    bytes>` and the editor keeps the pipe open indefinitely, interleaving
-//    requests and responses. That needs an *incremental, raw N-byte* stdin read
-//    against a never-closing pipe. The hexa runtime (0.1.0-dispatch) exposes
-//    only:
-//        read_stdin()  — slurps ALL of fd 0, BLOCKING until EOF (an editor
-//                        never sends EOF mid-session → deadlock);
-//        input(prompt) — line-based, strips \r, and returns "" (not void) at
-//                        EOF, so it can neither detect EOF nor read a non-line-
-//                        aligned JSON body of exactly N bytes.
-//    Neither primitive can do Content-Length framing on a live pipe, so a
-//    faithful interactive server is not portable today. When hexa gains a raw
-//    `read_stdin_n(n)` / fd-0 byte read, port serve() from the .py (validate /
-//    hover below are already server-ready). Until then bin/kosmos-lsp keeps the
-//    .py for live editor sessions; --check (CI) is fully hexa-native here.
+//  SERVE PORT (this session): the LSP protocol frames each message as
+//    `Content-Length: N\r\n\r\n<N raw bytes>` and the editor keeps the pipe open
+//    indefinitely, interleaving requests and responses. That needs an
+//    *incremental, raw N-byte* stdin read against a never-closing pipe. The
+//    blocker named in the prior header — read_stdin() (slurps ALL of fd 0 until
+//    EOF → deadlock) / input() (line-based, can't read a non-line-aligned body
+//    of exactly N bytes) — is resolved by hexa-lang's `read_stdin_n_c(n)`
+//    (runtime.c raw read(2) of EXACTLY n bytes, returns the C buffer pointer AS
+//    AN INT → wrap in from_cstring). read_message() drains the headers via the
+//    line-based input() then byte-reads the framed body; write_message() emits
+//    Content-Length + body via the unbuffered print(). bin/kosmos-lsp can now
+//    point at this .hexa for live sessions (k_hexa_native fully satisfied).
 //
 //  HARD CONSTRAINTS (anima/hexa house rules):
 //    - pure-hexa, COMPILED-ONLY · NO top-level main() call (fn main auto-fires)
@@ -545,13 +547,283 @@ fn k_check_file(path: string) -> int {
 }
 
 
+// ── §5.5 interactive stdio JSON-RPC server (serve()) ─────────────────────────
+//
+// Live editor sessions, hexa-native. REUSES k_validate (§3) for diagnostics and
+// k_hover (§4) for hover — the grammar engine is NOT duplicated here. Mirrors
+// the .py serve() (initialize / shutdown / exit / didOpen / didChange /
+// didClose / hover). Framing + JSON extraction ported from n6_lsp.hexa.
+//
+// PORTING NOTES (hexa-native house rules):
+//   · No `null` literal — hexa rejects it. Docs map is uri→text built with #{};
+//     membership via has_key(docs, uri). "result: null" is emitted as the
+//     literal JSON string "null" inside response bodies.
+//   · No `re` — JSON keys are located with whitespace-tolerant string ops so a
+//     `"method": "x"` (space after the colon) parses just as the compact form.
+//   · read_stdin_n_c returns a char* AS AN INT; from_cstring() converts to a
+//     hexa string. `-> str` would NOT auto-convert (returns the pointer int).
+
+// read_stdin_n_c reads EXACTLY n bytes from fd 0 (runtime.c, raw read(2)) and
+// returns the C buffer pointer as an int; from_cstring copies it into a string.
+extern fn read_stdin_n_c(n: int) -> int
+
+// JSON string escaping for diagnostic messages + hover/uri values. Escapes the
+// subset Python's json.dumps would: \ " \n \r \t.
+fn k_json_escape(s: string) -> string {
+    let mut out = ""
+    let mut i = 0
+    let n = len(s)
+    while i < n {
+        let c = s.substring(i, i + 1)
+        if c == "\\" { out = out + "\\\\" }
+        else if c == "\"" { out = out + "\\\"" }
+        else if c == "\n" { out = out + "\\n" }
+        else if c == "\r" { out = out + "\\r" }
+        else if c == "\t" { out = out + "\\t" }
+        else { out = out + c }
+        i = i + 1
+    }
+    return out
+}
+
+// Serialize one k_diag() map to the .py diag() JSON object (source kosmos-lsp).
+fn k_diag_json(d: any) -> string {
+    let ln = to_int(d["line"])
+    let c0 = to_int(d["c0"])
+    let c1 = to_int(d["c1"])
+    let sev = to_int(d["severity"])
+    let msg = to_string(d["message"])
+    return "{\"range\":{\"start\":{\"line\":" + to_string(ln) +
+           ",\"character\":" + to_string(c0) + "},\"end\":{\"line\":" +
+           to_string(ln) + ",\"character\":" + to_string(c1) + "}}," +
+           "\"severity\":" + to_string(sev) +
+           ",\"source\":\"kosmos-lsp\",\"message\":\"" + k_json_escape(msg) + "\"}"
+}
+
+// Serialize the k_validate() diagnostic array to a JSON array string.
+fn k_diags_json(ds: array) -> string {
+    let mut out = "["
+    let nd = len(ds)
+    let mut i = 0
+    while i < nd {
+        if i > 0 { out = out + "," }
+        out = out + k_diag_json(ds[i])
+        i = i + 1
+    }
+    return out + "]"
+}
+
+// ─── LSP framing read ──────────────────────────────────
+// Read ONE LSP-framed message body from stdin. Returns the raw JSON body, or ""
+// at clean EOF. Drains Content-Length:N\r\n\r\n via the line-based input(), then
+// byte-reads EXACTLY N bytes of the body via read_stdin_n_c.
+fn k_read_message() -> string {
+    let mut content_length = -1
+    let mut saw_header = false
+    while true {
+        let line = input("")
+        if line == "" {
+            if saw_header { break }
+            return ""
+        }
+        saw_header = true
+        let key = "Content-Length:"
+        let ix = line.index_of(key)
+        if ix >= 0 {
+            let v = k_strip(line.substring(ix + len(key), len(line)))
+            content_length = to_int(v)
+        }
+    }
+    if content_length <= 0 { return "" }
+    return from_cstring(read_stdin_n_c(content_length))
+}
+
+// ─── LSP framing write ─────────────────────────────────
+// Frame Content-Length: N\r\n\r\n + body. print() → unbuffered write(2).
+fn k_write_message(body: string) {
+    let cl = "Content-Length: " + to_string(len(body)) + "\r\n\r\n"
+    print(cl + body)
+}
+
+// ─── JSON extraction (substring; whitespace-tolerant) ──────────────────
+// Finds `"<name>"`, skips whitespace, requires a `:`, skips trailing whitespace,
+// and returns the index of the value's first char. -1 when the key is absent.
+fn k_value_start(msg: string, name: string) -> int {
+    let key = "\"" + name + "\""
+    let idx = msg.index_of(key)
+    if idx < 0 { return -1 }
+    let mut i = idx + len(key)
+    let n = len(msg)
+    while i < n {
+        let c = msg.substring(i, i + 1)
+        if c == " " || c == "\t" || c == "\n" || c == "\r" { i = i + 1 }
+        else { break }
+    }
+    if i >= n { return -1 }
+    if msg.substring(i, i + 1) != ":" { return -1 }
+    i = i + 1
+    while i < n {
+        let c = msg.substring(i, i + 1)
+        if c == " " || c == "\t" || c == "\n" || c == "\r" { i = i + 1 }
+        else { break }
+    }
+    return i
+}
+
+// Read a JSON string value starting at vs (which must point at the opening
+// quote); returns the decoded contents (\" \n \r \t \\ handled). "" if no quote.
+fn k_read_string_at(msg: string, vs: int) -> string {
+    if vs < 0 || vs >= len(msg) { return "" }
+    if msg.substring(vs, vs + 1) != "\"" { return "" }
+    let after = msg.substring(vs + 1, len(msg))
+    let na = len(after)
+    let mut i = 0
+    let mut out = ""
+    while i < na {
+        let c = after.substring(i, i + 1)
+        if c == "\\" && i + 1 < na {
+            let nx = after.substring(i + 1, i + 2)
+            if nx == "\"" { out = out + "\"" i = i + 2 }
+            else if nx == "n" { out = out + "\n" i = i + 2 }
+            else if nx == "r" { out = out + "\r" i = i + 2 }
+            else if nx == "t" { out = out + "\t" i = i + 2 }
+            else if nx == "\\" { out = out + "\\" i = i + 2 }
+            else { out = out + c i = i + 1 }
+        } else {
+            if c == "\"" { break }
+            out = out + c
+            i = i + 1
+        }
+    }
+    return out
+}
+
+fn k_extract_method(msg: string) -> string {
+    return k_read_string_at(msg, k_value_start(msg, "method"))
+}
+
+// raw id token (a number like `1` or a quoted `"abc"`); "" if absent.
+fn k_extract_id(msg: string) -> string {
+    let vs = k_value_start(msg, "id")
+    if vs < 0 { return "" }
+    let after = msg.substring(vs, len(msg))
+    if k_starts_with(after, "\"") {
+        let end = after.substring(1, len(after)).index_of("\"")
+        if end < 0 { return "" }
+        return "\"" + after.substring(1, 1 + end) + "\""
+    }
+    let na = len(after)
+    let mut i = 0
+    while i < na {
+        let c = after.substring(i, i + 1)
+        if c == "," || c == "}" || c == " " || c == "\n" || c == "\r" || c == "\t" { break }
+        i = i + 1
+    }
+    return after.substring(0, i)
+}
+
+fn k_extract_uri(msg: string) -> string {
+    return k_read_string_at(msg, k_value_start(msg, "uri"))
+}
+
+// textDocument.text or contentChanges[*].text — decodes \" \n \t \\ escapes.
+// With full-sync (textDocumentSync 1) clients send exactly one change, so the
+// FIRST "text" is that content.
+fn k_extract_text(msg: string) -> string {
+    return k_read_string_at(msg, k_value_start(msg, "text"))
+}
+
+// position.line — the integer inside "position":{"line":N,"character":M}.
+fn k_extract_position_line(msg: string) -> int {
+    let pidx = msg.index_of("\"position\"")
+    if pidx < 0 { return -1 }
+    let after = msg.substring(pidx, len(msg))
+    let vs = k_value_start(after, "line")
+    if vs < 0 { return -1 }
+    let tail = after.substring(vs, len(after))
+    let nt = len(tail)
+    let mut i = 0
+    while i < nt {
+        let c = tail.substring(i, i + 1)
+        if c == "," || c == "}" || c == " " || c == "\n" || c == "\r" || c == "\t" { break }
+        i = i + 1
+    }
+    if i == 0 { return -1 }
+    return to_int(tail.substring(0, i))
+}
+
+// ─── publish diagnostics for a doc (reuses k_validate) ─────────────────
+fn k_publish(uri: string, text: string) {
+    let ds = k_validate(text)
+    let d = k_diags_json(ds)
+    k_write_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\"," +
+        "\"params\":{\"uri\":\"" + k_json_escape(uri) + "\",\"diagnostics\":" + d + "}}")
+}
+
+// ─── serve loop ────────────────────────────────────────
+// Mirrors the .py serve(); diagnostics via k_validate, hover via k_hover.
+fn k_serve() {
+    let mut docs = #{}
+    while true {
+        let msg = k_read_message()
+        if msg == "" { break }   // clean EOF
+        let meth = k_extract_method(msg)
+        let id = k_extract_id(msg)
+
+        if meth == "initialize" {
+            k_write_message("{\"jsonrpc\":\"2.0\",\"id\":" + id +
+                ",\"result\":{\"capabilities\":{\"textDocumentSync\":1," +
+                "\"hoverProvider\":true},\"serverInfo\":{\"name\":\"kosmos-lsp\"}}}")
+        } else if meth == "shutdown" {
+            k_write_message("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":null}")
+        } else if meth == "exit" {
+            break
+        } else if meth == "textDocument/didOpen" {
+            let uri = k_extract_uri(msg)
+            let text = k_extract_text(msg)
+            docs[uri] = text
+            k_publish(uri, text)
+        } else if meth == "textDocument/didChange" {
+            let uri = k_extract_uri(msg)
+            let text = k_extract_text(msg)
+            docs[uri] = text
+            k_publish(uri, text)
+        } else if meth == "textDocument/didClose" {
+            let uri = k_extract_uri(msg)
+            if has_key(docs, uri) { docs[uri] = "" }
+            k_write_message("{\"jsonrpc\":\"2.0\",\"method\":\"textDocument/publishDiagnostics\"," +
+                "\"params\":{\"uri\":\"" + k_json_escape(uri) + "\",\"diagnostics\":[]}}")
+        } else if meth == "textDocument/hover" {
+            let uri = k_extract_uri(msg)
+            let mut txt = ""
+            if has_key(docs, uri) { txt = docs[uri] }
+            let ln = k_extract_position_line(msg)
+            let lines = txt.split("\n")
+            let mut hv = ""
+            if ln >= 0 && ln < len(lines) { hv = k_hover(to_string(lines[ln])) }
+            if hv != "" {
+                k_write_message("{\"jsonrpc\":\"2.0\",\"id\":" + id +
+                    ",\"result\":{\"contents\":{\"kind\":\"markdown\",\"value\":\"" +
+                    k_json_escape(hv) + "\"}}}")
+            } else {
+                k_write_message("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":null}")
+            }
+        } else if id != "" {
+            k_write_message("{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":null}")
+        }
+    }
+}
+
+
 // ── §6 entrypoint ────────────────────────────────────────────────────────────
 //
 // args() = [binary, arg1, arg2, ...] (NO script path). Mirrors the .py CLI:
-//   --check FILE  → lint, exit 1 on error
+//   --check FILE        → lint, exit 1 on error (one-shot CI, unchanged).
 //   --hover FILE LINENO → print the hover string for a 0-based line (parity aid;
 //                          the .py only used hover() inside serve()).
-//   (no stdio server — see header HONEST TODO.)
+//   (no --check / --hover) → speak LSP on stdin/stdout via k_serve() (the .py's
+//                          default). argv carrying --check routes to the check
+//                          path; everything else serves.
 
 fn main() {
     let a = args()
@@ -574,10 +846,7 @@ fn main() {
             }
         }
     }
-    // No --check / --hover: the interactive stdio server is not portable yet
-    // (see header HONEST TODO). Emit usage on stderr-equivalent and exit non-2.
-    println("kosmos-lsp (hexa): usage — hexa run lsp/kosmos_lsp.hexa --check FILE")
-    println("  (the interactive stdio JSON-RPC server is not yet hexa-portable;")
-    println("   bin/kosmos-lsp uses the .py for live editor sessions. see header.)")
+    // No --check / --hover → interactive stdio JSON-RPC server (the .py default).
+    k_serve()
     exit(0)
 }

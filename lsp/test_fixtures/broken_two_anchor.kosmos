@@ -1,0 +1,5 @@
+@anchor a := "first" :: kosmos-anchor [tier=1 active]
+  coord = [0.1, 0.2]
+  lane = "x"
+  radius = 0.5
+@anchor b := "second" :: kosmos-anchor [tier=2 active]

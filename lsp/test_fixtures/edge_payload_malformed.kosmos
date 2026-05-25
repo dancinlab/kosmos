@@ -1,0 +1,6 @@
+@anchor a := "x" :: kosmos-anchor [tier=1 active]
+  coord = [0.1, 0.2]
+  lane = "x"
+  radius = 0.5
+  @payload := "missing modality"
+  @payload text "no assign op"

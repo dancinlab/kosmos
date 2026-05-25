@@ -1,0 +1,86 @@
+// test_kosmos_roundtrip.hexa — G3: emit → parse round-trip + real-anchor parse.
+//
+// Closes the kosmos test gap: the emitter (write_kosmos_anchor) and the parser
+// (kosmos_load) must agree. We emit an anchor, load it back, and assert every
+// placement/payload field round-trips. Then we parse the committed knuth anchors
+// to confirm the parser handles real on-disk .kosmos files.
+//
+// F-KOSMOS-RT-1  round-trip  : write→load preserves id/tier/coord/lane/radius/text/forms
+// F-KOSMOS-RT-2  validity     : the round-tripped anchor is kosmos_anchor_valid
+// F-KOSMOS-RT-3  real-anchor  : every committed knuth anchor parses + is valid
+
+import "/Users/ghost/core/kosmos/impl/anima/kosmos_parser_lib.hexa"
+import "/Users/ghost/core/kosmos/impl/anima/kosmos_anchor.hexa"
+
+fn _approx(a: float, b: float) -> bool {
+    let d = a - b
+    if d < 0.0 { return (0.0 - d) < 0.001 }
+    return d < 0.001
+}
+
+fn main() {
+    let mut pass = 0
+    let mut fail = 0
+
+    // ── F-KOSMOS-RT-1/2: emit → load round-trip ──
+    let t5 = #{ "concept": 0.6, "context": 0.6, "meaning": 0.6,
+                "authenticity": 0.6, "sender": 0.6 }
+    // mean_t = 0.6 ; phi = 0.5 → coord [0.5, 0.6] ; cell 7 ; tier 42
+    let dir = "/tmp/kosmos_g3_roundtrip"
+    let _ = exec("rm -rf " + dir)
+    let path = write_kosmos_anchor(dir, "g3_probe", "hello kosmos", t5,
+                                   0.5, 7, 42, "test", "curious")
+    let a = kosmos_load(path)
+
+    if to_string(a["id"]) == "g3_probe" { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT id=" + to_string(a["id"])) }
+
+    if to_int(a["knuth_tier"]) == 42 { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT tier=" + to_string(a["knuth_tier"])) }
+
+    let psi = a["vacuum_psi"]
+    if len(psi) == 2 && _approx(to_float(psi[0]), 0.5) && _approx(to_float(psi[1]), 0.6) {
+        pass = pass + 1
+    } else { fail = fail + 1; println("FAIL RT coord") }
+
+    if to_string(a["cell_id"]) == "cell_7" { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT lane=" + to_string(a["cell_id"])) }
+
+    if _approx(to_float(a["basin_radius"]), 0.15) { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT radius=" + to_string(a["basin_radius"])) }
+
+    if to_string(a["payload_text"]) == "hello kosmos" { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT text=" + to_string(a["payload_text"])) }
+
+    if to_string(a["payload_text_form"]) == "inline" { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT text_form=" + to_string(a["payload_text_form"])) }
+
+    if to_string(a["payload_image_form"]) == "pending" { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT image_form=" + to_string(a["payload_image_form"])) }
+
+    if to_int(a["payload_count"]) == 5 { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT payload_count=" + to_string(a["payload_count"])) }
+
+    if kosmos_anchor_valid(a) { pass = pass + 1 }
+    else { fail = fail + 1; println("FAIL RT valid") }
+
+    // ── F-KOSMOS-RT-3: real committed anchors parse + valid ──
+    let knuth = ["knuth_000_zero", "knuth_015_curiosity", "knuth_077_mandala",
+                 "knuth_095_unity"]
+    let mut ki = 0
+    while ki < len(knuth) {
+        let kp = "/Users/ghost/core/kosmos/anchors/anima/" + knuth[ki] + ".kosmos"
+        let r = kosmos_load(kp)
+        if kosmos_anchor_valid(r) && len(r["vacuum_psi"]) == 2 {
+            pass = pass + 1
+        } else { fail = fail + 1; println("FAIL real " + knuth[ki]) }
+        ki = ki + 1
+    }
+
+    println("")
+    if fail == 0 {
+        println("PASS  F-KOSMOS-RT  round-trip + real-anchor — " + to_string(pass) + "/" + to_string(pass) + " checks")
+    } else {
+        println("FAIL  F-KOSMOS-RT  " + to_string(pass) + " pass / " + to_string(fail) + " fail")
+    }
+}

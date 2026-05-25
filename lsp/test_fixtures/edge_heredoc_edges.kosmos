@@ -1,0 +1,13 @@
+@anchor a := "x" :: kosmos-anchor [tier=1 active]
+  coord = [0.1, 0.2]
+  lane = "x"
+  radius = 0.5
+  tier = 1
+  tags = "k=v"
+  -> some_edge_target
+  "free prose line"
+  `backtick line`
+  note = <<~END
+  this is inside the heredoc and should be skipped @anchor not counted
+  END
+  after = "ok"

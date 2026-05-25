@@ -37,6 +37,11 @@
 //    line-based input() then byte-reads the framed body; write_message() emits
 //    Content-Length + body via the unbuffered print(). bin/kosmos-lsp can now
 //    point at this .hexa for live sessions (k_hexa_native fully satisfied).
+//    serve() advertises hoverProvider and handles initialize / shutdown / exit /
+//    didOpen / didChange / didSave / didClose / hover, with whitespace-tolerant
+//    JSON extraction (`"method": "x"` parses as readily as the compact form).
+//    `--stdio` runs it explicitly; absent any verb it is the default (the .py's
+//    behavior).
 //
 //  HARD CONSTRAINTS (anima/hexa house rules):
 //    - pure-hexa, COMPILED-ONLY · NO top-level main() call (fn main auto-fires)
@@ -635,7 +640,19 @@ fn k_read_message() -> string {
         }
     }
     if content_length <= 0 { return "" }
-    return from_cstring(read_stdin_n_c(content_length))
+    return k_read_n(content_length)
+}
+
+// Read EXACTLY n bytes from fd 0. read_stdin_n_c is a raw read(2) and MAY
+// short-read on a pipe, so loop until n bytes are gathered (or clean EOF).
+fn k_read_n(n: int) -> string {
+    let mut out = ""
+    while len(out) < n {
+        let chunk = from_cstring(read_stdin_n_c(n - len(out)))
+        if len(chunk) == 0 { break }
+        out = out + chunk
+    }
+    return out
 }
 
 // ─── LSP framing write ─────────────────────────────────
@@ -783,7 +800,9 @@ fn k_serve() {
             let text = k_extract_text(msg)
             docs[uri] = text
             k_publish(uri, text)
-        } else if meth == "textDocument/didChange" {
+        } else if meth == "textDocument/didChange" || meth == "textDocument/didSave" {
+            // didSave with includeText carries the full doc text just like
+            // didChange under full-sync; both re-publish from the new text.
             let uri = k_extract_uri(msg)
             let text = k_extract_text(msg)
             docs[uri] = text
@@ -821,13 +840,19 @@ fn k_serve() {
 //   --check FILE        → lint, exit 1 on error (one-shot CI, unchanged).
 //   --hover FILE LINENO → print the hover string for a 0-based line (parity aid;
 //                          the .py only used hover() inside serve()).
+//   --stdio             → run the LSP stdio JSON-RPC server (explicit alias; an
+//                          earlier port gated the server behind this flag).
 //   (no --check / --hover) → speak LSP on stdin/stdout via k_serve() (the .py's
 //                          default). argv carrying --check routes to the check
-//                          path; everything else serves.
+//                          path; everything else (incl. --stdio) serves.
 
 fn main() {
     let a = args()
     let argc = len(a)
+    if argc >= 2 && to_string(a[1]) == "--stdio" {
+        k_serve()
+        exit(0)
+    }
     if argc >= 3 {
         if to_string(a[1]) == "--check" {
             let rc = k_check_file(to_string(a[2]))

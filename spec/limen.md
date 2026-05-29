@@ -1,19 +1,19 @@
-# kanchors.md — `.kanchors` packed anchor-pack binary format (spec)
+# limen.md — `.limen` packed anchor-harbor binary format (spec)
 
 > **STATUS: spec-only** (2026-05-30) · a `kosmos/2.x` follow-on layer.
 > This document defines the **binary container** that a `@corpus` member `ref`
-> points at (`member = ref "shards/web.kanchors" sha256=… count=… frac=… lane=…`,
+> points at (`member = ref "shards/web.limen" sha256=… count=… frac=… lane=…`,
 > see `spec/kosmos.md` §5.6.3 form (b)). The `kosmos/2.0` entry (`spec/kosmos.md`
-> §8) deferred the `.kanchors` binary + the merkle construction detail to a 2.x
+> §8) deferred the `.limen` binary + the merkle construction detail to a 2.x
 > layer; **this document fills that deferral** — the format + ASCII layout + the
 > merkle construction. The decode/encode **implementation is a future hexa lib**
-> (`impl/kanchors.hexa`, not yet written) — this is the wire spec it will obey.
+> (`impl/limen.hexa`, not yet written) — this is the wire spec it will obey.
 
 ---
 
 ## 0. What it is — one sentence
 
-A `.kanchors` file is a **packed shard of member anchors**: a length-prefixed
+A `.limen` file is a **packed shard of member anchors**: a length-prefixed
 sequence of serialized `@anchor` entries (each = one corpus member) plus a
 trailing **merkle root** over the members' content hashes — a decodable pack, not
 an opaque blob (it unpacks back to a stream of `@anchor` manifests, exactly the
@@ -21,7 +21,7 @@ inline form of `spec/kosmos.md` §5.6.3 (a)).
 
 The point of the `ref` form (vs inline nested `@anchor`s) is **scale**: a
 million-sample corpus cannot list a million 2-space-indented anchors in one
-`.kosmos` text file. A `.kanchors` shard packs them compactly while staying
+`.kosmos` text file. A `.limen` shard packs them compactly while staying
 **content-addressable** (the corpus `member = ref … sha256=` commits to the whole
 shard's bytes; the in-shard merkle root commits to each member independently, so
 a single member can be verified without re-hashing the whole shard).
@@ -38,7 +38,7 @@ the same 32 bytes).
 ```
  offset  size   field                 notes
  ──────  ─────  ────────────────────  ─────────────────────────────────────────
- 0       8      magic                 ASCII "KANCHOR\0" (4B 41 4E 43 48 4F 52 00)
+ 0       8      magic                 ASCII "LIMEN\0\0\0" (4C 49 4D 45 4E 00 00 00)
  8       2      version_major         u16 LE — pack format major (this doc = 2)
  10      2      version_minor         u16 LE — pack format minor (this doc = 0)
  12      4      count                 u32 LE — number of member records
@@ -149,10 +149,10 @@ The corpus-level `closed_corpus` rule (`spec/kosmos.md` §5.6.4) is:
 Σ frac = 1.0 ∧ ∀ member sha256 verified ∧ (merkle present → root recomputes)
 ```
 
-A `.kanchors` shard satisfies its slice of that rule:
+A `.limen` shard satisfies its slice of that rule:
 
 1. **shard sha256** — the corpus `member = ref … sha256=H` (§5.6.3) commits to the
-   **whole `.kanchors` file bytes**. A verifier recomputes SHA-256 over the file and
+   **whole `.limen` file bytes**. A verifier recomputes SHA-256 over the file and
    checks it equals `H`. (This is the coarse, whole-shard commitment.)
 2. **per-member integrity** — each record's `hash` (§2) MUST equal SHA-256 of that
    record's `anchor_text`. A verifier recomputes per record (the fine commitment —
@@ -174,12 +174,12 @@ it only carries members compactly + commits to them via merkle.
 
 ## 5. relationship to the text manifest (round-trip)
 
-`.kanchors` ⇄ inline `@anchor` members is a **lossless round-trip**:
+`.limen` ⇄ inline `@anchor` members is a **lossless round-trip**:
 
 ```
-   @corpus (kosmos text)                       shard.kanchors (binary)
+   @corpus (kosmos text)                       shard.limen (binary)
    ─────────────────────                       ───────────────────────
-     member = ref "shards/web.kanchors" ──────▶  [KANCHOR\0][hdr]
+     member = ref "shards/web.limen" ──────▶  [LIMEN\0][hdr]
         sha256=H count=N frac=0.8 lane="web"        RECORD: hash|len|@anchor text
                                                     RECORD: hash|len|@anchor text
                                                     …
@@ -199,7 +199,7 @@ it only carries members compactly + commits to them via merkle.
   record `hash` and the trailing `merkle_root` while walking.
 
 A corpus may mix forms freely (§5.6.3): small/cold-readable members stay inline in
-the `.kosmos` text; bulk members live in one or more `.kanchors` shards. The two are
+the `.kosmos` text; bulk members live in one or more `.limen` shards. The two are
 interchangeable views of the same member set.
 
 ---
@@ -209,13 +209,13 @@ interchangeable views of the same member set.
 | layer | status |
 |---|---|
 | wire format (this doc) | **spec-only** — defined here; no normative reference codec yet |
-| `impl/kanchors.hexa` pack/unpack codec | **NOT WRITTEN** — future hexa lib; will be the reference encoder/decoder obeying §1–§3 |
-| LSP / tree-sitter recognition of `.kanchors` | out of scope — `.kanchors` is binary, not a `.kosmos` text grammar; the LSP validates the `member = ref` *line* in the `.kosmos` manifest (see `lsp/kosmos_lsp.hexa`), not the shard bytes |
+| `impl/limen.hexa` pack/unpack codec | **NOT WRITTEN** — future hexa lib; will be the reference encoder/decoder obeying §1–§3 |
+| LSP / tree-sitter recognition of `.limen` | out of scope — `.limen` is binary, not a `.kosmos` text grammar; the LSP validates the `member = ref` *line* in the `.kosmos` manifest (see `lsp/kosmos_lsp.hexa`), not the shard bytes |
 | `merkle` field over *all* shards (corpus-of-shards root) | **future minor** (§4 note) — within-shard root is authoritative now |
 
-No `.kanchors` file is shipped in this repo (a real shard needs a scale corpus,
+No `.limen` file is shipped in this repo (a real shard needs a scale corpus,
 which does not exist yet — the `examples/04_corpus_clm_byte.kosmos` worked example
-references `shards/web.kanchors` as a manifest pointer with a placeholder sha256,
+references `shards/web.limen` as a manifest pointer with a placeholder sha256,
 exactly as `examples/02_multimodal.kosmos` references unshipped `media/` binaries).
 
 ---
@@ -223,6 +223,6 @@ exactly as `examples/02_multimodal.kosmos` references unshipped `media/` binarie
 ## 7. cross-link
 
 - `spec/kosmos.md` §5.6.3 (member `ref` form) · §5.6.4 (`closed_corpus`) · §8 (this
-  fills the deferred `.kanchors` + merkle detail).
+  fills the deferred `.limen` + merkle detail).
 - `spec/profiles/anima-consciousness-carving.md` §5.5 (anima corpus binding).
-- `examples/04_corpus_clm_byte.kosmos` — a worked `@corpus` referencing a `.kanchors` shard.
+- `examples/04_corpus_clm_byte.kosmos` — a worked `@corpus` referencing a `.limen` shard.

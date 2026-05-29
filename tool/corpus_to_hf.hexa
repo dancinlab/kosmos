@@ -5,7 +5,7 @@
 //
 // Scope (docs/hf_export.md): emits the upload manifest (repo_id · card meta ·
 // data_files with sha256 carry). Actual HF push is a separate creds/network
-// step (anima tool/hf_upload_mk2.hexa + /HF.jsonl). NOT a .kanchors decoder.
+// step (anima tool/hf_upload_mk2.hexa + /HF.jsonl). NOT a .limen decoder.
 // read_file / args / print / exit are hexa builtins (no extern decl needed).
 
 fn h_strip(s: string) -> string {

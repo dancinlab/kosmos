@@ -1,7 +1,9 @@
 # kosmos.md — `.kosmos` multimodal knowledge-anchor manifest (canonical spec)
 
-> **SPEC VERSION: `kosmos/1.1`** (status: active · 2026-05-18)
+> **SPEC VERSION: `kosmos/2.0`** (status: active · 2026-05-30)
 > This document is the **canonical, versioned grammar** of the `.kosmos` format. It is *substrate-independent*: it defines placement coordinates and sensory payloads abstractly. Concrete field semantics are bound by a **profile** (see `spec/profiles/`).
+>
+> **kosmos/2.0** adds the `@corpus` collection entry (§5.6) — a `.kosmos` file is now EITHER one anchor (1.x, unchanged) OR one corpus (a dataset = an ordered collection of member anchors). Backward-compatible for single-anchor files; **major** because the top-level "exactly one `@anchor`" invariant is generalised to "exactly one top-level entry (`@anchor` XOR `@corpus`)". Migration note in §8.
 >
 > Spec changes append a new version entry to §8 (version history) and update the `SPEC VERSION` header. Semver: **major** = incompatible change (migration note required) · **minor** = backward-compatible extension · **patch** = clarification / typo.
 
@@ -9,9 +11,9 @@
 
 ## 0. What it is — one sentence
 
-A `.kosmos` file is the manifest of **one knowledge anchor**: a single point/basin in an abstract placement space, described in two orthogonal layers — a **modality-independent placement coordinate** and zero or more **modality-specific sensory payloads** that all flow into the same placement.
+A `.kosmos` file is EITHER the manifest of **one knowledge anchor** — a single point/basin in an abstract placement space, described in two orthogonal layers (a **modality-independent placement coordinate** and zero or more **modality-specific sensory payloads** that all flow into the same placement) — OR (since `kosmos/2.0`, §5.6) one **corpus**: a dataset = an ordered collection of member anchors, itself a meta-anchor (the collection's own placement = the centroid its members carve).
 
-Extension: `.kosmos` (Greek κόσμος, ordered universe). The grammar is a **superset of tape v1.2** — it uses tape's `@<type> <id> := "<subject>" :: <kind> [<grades>]` entry form plus 2-space-indent body lines, and adds exactly **two new entry types**: `@anchor` and `@payload`.
+Extension: `.kosmos` (Greek κόσμος, ordered universe). The grammar is a **superset of tape v1.2** — it uses tape's `@<type> <id> := "<subject>" :: <kind> [<grades>]` entry form plus 2-space-indent body lines, and adds **three new entry types**: `@anchor`, `@payload`, and `@corpus` (§5.6, kosmos/2.0).
 
 ---
 
@@ -230,6 +232,71 @@ A natural extension request is an `@edge` / `@relation` entry to express that an
 
 A future profile MAY define a relation-bearing companion artefact, and a future `kosmos/2.0` MAY revisit a graph layer with its own verification rule — but within `kosmos/1.x` the manifest is one anchor, one file, and inter-anchor relations are explicitly out of scope.
 
+> **kosmos/2.0 update**: the collection layer foreshadowed here is now opened as the `@corpus` entry (§5.6) — a dataset = an ordered *collection* of member anchors. This is **not** the same as inter-anchor *edges*: `@corpus` adds containment (a corpus *holds* members), not pairwise relations. The `@edge`/`@relation` prohibition above still stands; a corpus member carries no edge to another member. Verification stays intra-member (each member's own cross-modal rule) plus a corpus-level integrity rule (§5.6.4).
+
+---
+
+## 5.6 § `@corpus` — dataset collection layer (kosmos/2.0)
+
+A `.kosmos` file's top-level entry is **either** one `@anchor` (1.x, unchanged) **or** one `@corpus`. A `@corpus` is a **dataset**: an ordered collection of member anchors that is *itself* a meta-anchor (it has its own placement = the centroid its members carve). This is the format's training-data layer (a corpus of samples, each sample an anchor).
+
+### 5.6.1 header + meta-anchor placement
+
+```
+@corpus <id> := "<name>" :: kosmos-corpus [active]
+  profile = "anima-consciousness-carving"
+  coord   = [0.0, 0.0]   # meta-anchor: centroid of members — design placeholder, measured later
+  lane    = "clm_p1"
+  radius  = 1.0          # corpus spread — design placeholder, measured later
+```
+
+A `@corpus` carries the **same required placement triple** (`coord`/`lane`/`radius`) as `@anchor` (§2) — the corpus is a *meta-anchor*: its `coord` is the centroid its members occupy, its `radius` the dataset's spread. Until an encoder (§4.4) measures it, `coord`/`radius` are design placeholders (§4.3 honesty rule) carrying the inline comment. `tier`/`tags`/`profile` carry over unchanged.
+
+### 5.6.2 corpus meta fields
+
+| field | type | required | meaning |
+|---|---|---|---|
+| `anchor_level` | enum `sample` \| `topic` \| `2tier` | optional (default `2tier`) | granularity of members — `sample`: one member per training sample · `topic`: one member per Ψ-cluster · `2tier`: cluster-members each holding a sample stream (default; VQ centroid+residual / filesystem inode+extent analog). A scale-free zoom parameter, not a fixed choice. |
+| `count` | integer ≥ 0 | required | total member anchors (across inline + ref) |
+| `lane_mix` | quoted `k=v, …` map | optional | per-lane mixing fractions, Σ = 1.0 (e.g. `"web=0.8, register=0.2"`) — maps a MoE 2-lane corpus to its sources |
+| `vocab` | integer | optional | tokenisation vocabulary size (e.g. `256` for byte-vocab) |
+| `encoding` | quoted string | optional | token encoding id (e.g. `"byte-utf8"`) |
+| `merkle` | hex64 | optional | Merkle root over member `sha256`s — scale integrity without listing all (full format: a future minor) |
+
+`anchor_level` is open-by-default per §6.2 (an unknown value tolerated); the three named values are the standard set.
+
+### 5.6.3 members — two forms (inline ⊕ ref)
+
+A corpus lists members in **either or both** forms (mix freely):
+
+**(a) inline** — a nested `@anchor` member at 2-space indent (small / cold-readable corpora). The nested `@anchor` is the full §1–§3 anchor grammar, indented; because it is **not** at column 0 it does not violate the legacy "one `@anchor` at column 0" rule — a single-anchor `.kosmos` file is still exactly one column-0 `@anchor`.
+
+```
+  @anchor s0001 := "sample 1" :: kosmos-anchor [active]
+    coord = [..]   # member placement
+    @payload text := "…"
+```
+
+**(b) ref** — a packed shard of many members (large corpora; avoids file-explosion). The shard is an anchor-pack (`.kanchors`, format = a future layer), **not** an opaque blob — it holds packed member anchors:
+
+```
+  member = ref "shards/web.kanchors" sha256=<hex64> count=<N> frac=0.8 lane="web"
+```
+
+`member` ref attrs: `sha256=` (content commitment, required), `count=` (members in shard), `frac=` (this shard's mixing fraction, float; Σ frac over all members = 1.0), `lane=` (source-lane label). `attr` is open (§6.2 rule 6).
+
+### 5.6.4 corpus verification — `closed_corpus`
+
+```
+  closed_corpus = "Σ frac = 1.0 ∧ ∀ member sha256 verified ∧ (merkle present → root recomputes)"
+```
+
+Analogous to `@anchor`'s `closed_anchor` (§4.1). The corpus-level integrity rule is: mixing fractions sum to 1.0, every `ref` member's `sha256` matches its shard bytes, and (if `merkle` present) the root recomputes. The **cross-modal rule (§4.2) applies per member** (each member anchor against its own `coord`/`radius`), not to the corpus as a whole; the corpus `coord` is verified as the members' centroid once an encoder is wired.
+
+### 5.6.5 multimodal members + open growth
+
+Each member anchor carries the full open modality set (§3.2) — `text` (inline), `image`/`audio`/`video` (ref), `tension` (anima profile, 5-channel), and any open-enum modality. A corpus is therefore multimodal-by-construction: a sample may feed text now and `audio`/`tension` later via the `pending`→`ref` peg-hole (§5.2), zero format change. A corpus MAY also grow (append members) — append-only is the natural mode (consistent with no train/infer split); a `frozen` snapshot for training reproducibility is a profile/tooling concern.
+
 ---
 
 ## 6. BNF-ish grammar + conformance
@@ -237,13 +304,29 @@ A future profile MAY define a relation-bearing companion artefact, and a future 
 ### 6.1 BNF-ish grammar
 
 ```bnf
-kosmos-file   ::= [ shebang ] { comment } anchor-entry
+kosmos-file   ::= [ shebang ] { comment } ( anchor-entry | corpus-entry )  ; 2.0: top-level XOR
 
 shebang       ::= "#!/usr/bin/env kosmos" NEWLINE
 comment       ::= "#" { any-char } NEWLINE
 
 anchor-entry  ::= anchor-header NEWLINE
                   { INDENT ( coord-field | payload-entry | meta-field ) NEWLINE }
+
+corpus-entry  ::= corpus-header NEWLINE                    ; (§5.6, kosmos/2.0)
+                  { INDENT ( coord-field | corpus-field | member-entry
+                           | corpus-meta-field ) NEWLINE }
+corpus-header ::= "@corpus" SP id SP ":=" SP qstring SP "::" SP
+                  "kosmos-corpus" SP "[" grade-list "]"
+corpus-field  ::= "anchor_level" SP "=" SP ( "sample"|"topic"|"2tier"|ident )
+                | "count"    SP "=" SP integer
+                | "lane_mix" SP "=" SP qstring
+                | "vocab"    SP "=" SP integer
+                | "encoding" SP "=" SP qstring
+                | "merkle"   SP "=" SP hex64
+member-entry  ::= INDENT anchor-entry                      ; (a) inline nested @anchor
+                | "member" SP "=" SP "ref" SP qstring
+                    SP "sha256=" hex64 { SP attr }          ; (b) packed shard ref
+corpus-meta-field ::= "closed_corpus" SP "=" SP qstring
 
 anchor-header ::= "@anchor" SP id SP ":=" SP qstring SP "::" SP
                   "kosmos-anchor" SP "[" grade-list "]"
@@ -265,8 +348,8 @@ payload-body  ::= qstring                                  ; (a) inline
                 | "ref" SP qstring SP "sha256=" hex64
                       SP "bytes=" integer { SP attr }       ; (b) ref
                 | "pending" SP qstring                      ; (c) pending
-attr          ::= ident "=" ( integer | ident | qstring )  ; e.g. channels=5,
-                                                            ;  encoder="clip@2026-05" (§4.4)
+attr          ::= ident "=" ( integer | float | ident | qstring )  ; e.g. channels=5,
+                                                            ;  frac=0.8 (§5.6.3), encoder="clip@2026-05" (§4.4)
 modality      ::= "text" | "image" | "audio" | "video"
                 | ident                                    ; open enum
 
@@ -296,7 +379,7 @@ This section consolidates parser obligations. "MUST" / "SHOULD" / "MAY" are used
 
 **A conformant `.kosmos` parser MUST:**
 
-1. accept exactly one `@anchor` entry, at column 0, per file; report a file with zero or more-than-one `@anchor` as an **error**.
+1. accept exactly **one top-level entry per file** — `@anchor` XOR `@corpus`, at column 0 (§5.6, kosmos/2.0); report a file with zero, or more-than-one column-0 entry, as an **error**. A single-anchor file is still exactly one column-0 `@anchor` (legacy invariant preserved); a `@corpus` file's nested `@anchor` members are indented (2-space), not column 0, so they do not count as top-level entries.
 2. accept the required placement triple `coord` / `lane` / `radius` as defined even when `@payload` count is zero; report a missing required field as an **error**.
 3. accept `@payload` as zero-or-more.
 4. **not reject an unknown modality tag** — the modality enum is open (§3.2 / §5.1). The parser validates only that the payload body is one of the three forms (inline / `ref` / `pending`).
@@ -343,5 +426,10 @@ This section consolidates parser obligations. "MUST" / "SHOULD" / "MAY" are used
 - **G2 — inter-anchor relations resolved out-of-scope (§5.5)** — a documented decision that `.kosmos` stays strictly 1-anchor-atomic; no `@edge`/`@relation` entry is added. Inter-anchor relations are a profile/corpus/graph-layer concern keyed by anchor `id`; the manifest stays one anchor per file.
 - **Backward compatibility**: every `kosmos/1.0` file remains a valid `kosmos/1.1` file — all new fields/attributes are optional, no field removed, no grammar construct changed. A `kosmos/1.0` parser meeting the open-field/open-modality rules already tolerates `kosmos/1.1` files (§6.2 rule 5). Semver: **minor**.
 
-### (next version placeholder)
-- Future spec changes append `kosmos/1.2` (backward-compatible extension) or `kosmos/2.0` (incompatible + migration note). Candidate areas: declared non-Euclidean metrics per profile, `ref` URI schemes, additional standard modalities, a relation-bearing companion artefact (see §5.5).
+### `kosmos/2.0` — 2026-05-30 (collection layer · MAJOR · active)
+- **`@corpus` entry (§5.6)** — the third entry type. A `.kosmos` file's top-level entry is now `@anchor` **XOR** `@corpus`. A `@corpus` is a **dataset**: an ordered collection of member anchors, itself a meta-anchor carrying the required placement triple (`coord` = members' centroid · `lane` · `radius`). This opens the collection layer foreshadowed in §5.5 (distinct from inter-anchor *edges*, which stay out of scope — a corpus adds *containment*, not pairwise relations).
+- **corpus meta fields (§5.6.2)** — `anchor_level` (`sample`|`topic`|`2tier`, default `2tier`; a scale-free granularity *zoom* parameter — sample/topic/2tier are special cases of one record, not a fork) · `count` · `lane_mix` · `vocab` · `encoding` · `merkle`.
+- **two member forms (§5.6.3)** — inline (nested 2-space `@anchor`) ⊕ ref (`member = ref "*.kanchors" sha256=… frac=…`, a packed anchor-pack — NOT an opaque blob). Mix freely. `attr` BNF extended to allow a `float` value (`frac=0.8`).
+- **`closed_corpus` (§5.6.4)** — corpus-level integrity (Σ frac = 1.0 ∧ ∀ ref member sha256 verified ∧ merkle root recomputes). The §4.2 cross-modal rule applies **per member**, not corpus-wide.
+- **MIGRATION NOTE (1.x → 2.0)**: every `kosmos/1.x` single-anchor file remains valid **unchanged** — it is one column-0 `@anchor`, which 2.0 accepts as one of the two top-level forms. The breaking change is only at the parser/spec contract level: a 1.x parser hard-coding "exactly one `@anchor`" will reject a `@corpus` file (it must learn the `@corpus` top-level form). No existing file is rewritten; no field removed. Producers emitting only `@anchor` need no change. Semver: **major** (top-level invariant generalised). The entry-type count badge moves 2 → 3 (`@anchor`, `@payload`, `@corpus`).
+- **Out of scope (deferred to 2.x minors)**: the `.kanchors` packed-shard binary format, the `merkle` tree construction detail, HF-dataset export, and LSP/tree-sitter `@corpus` recognition — each a follow-on layer; this entry defines the *grammar* only.

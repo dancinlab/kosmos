@@ -1,0 +1,164 @@
+// corpus_to_hf.hexa — map a kosmos/2.0 @corpus dataset (.kosmos) to a Hugging
+// Face dataset manifest JSON. hexa-native (project.tape k_hexa_native).
+//
+//   hexa run tool/corpus_to_hf.hexa <corpus.kosmos>   → prints <id>.hf-manifest JSON
+//
+// Scope (docs/hf_export.md): emits the upload manifest (repo_id · card meta ·
+// data_files with sha256 carry). Actual HF push is a separate creds/network
+// step (anima tool/hf_upload_mk2.hexa + /HF.jsonl). NOT a .kanchors decoder.
+// read_file / args / print / exit are hexa builtins (no extern decl needed).
+
+fn h_strip(s: string) -> string {
+    let mut a = s
+    while len(a) > 0 {
+        let c = a.substring(0, 1)
+        if c == " " || c == "\t" { a = a.substring(1, len(a)) } else { break }
+    }
+    while len(a) > 0 {
+        let c = a.substring(len(a) - 1, len(a))
+        if c == " " || c == "\t" || c == "\r" { a = a.substring(0, len(a) - 1) } else { break }
+    }
+    return a
+}
+
+fn h_starts(s: string, p: string) -> bool {
+    if len(s) < len(p) { return false }
+    return s.substring(0, len(p)) == p
+}
+
+fn h_json_escape(s: string) -> string {
+    let mut out = ""
+    let mut i = 0
+    while i < len(s) {
+        let c = s.substring(i, i + 1)
+        if c == "\\" { out = out + "\\\\" }
+        else if c == "\"" { out = out + "\\\"" }
+        else if c == "\n" { out = out + "\\n" }
+        else if c == "\r" { out = out + "\\r" }
+        else if c == "\t" { out = out + "\\t" }
+        else { out = out + c }
+        i = i + 1
+    }
+    return out
+}
+
+// value after the first "=" on a `key = value` line, stripped of quotes.
+fn h_val_after_eq(line: string) -> string {
+    let eq = line.index_of("=")
+    if eq < 0 { return "" }
+    let mut v = h_strip(line.substring(eq + 1, len(line)))
+    // drop trailing inline "# comment"
+    let h = v.index_of("#")
+    if h >= 0 { v = h_strip(v.substring(0, h)) }
+    if len(v) >= 2 {
+        if v.substring(0, 1) == "\"" {
+            let c2 = v.substring(len(v), len(v))
+            v = v.substring(1, len(v))
+            let q = v.index_of("\"")
+            if q >= 0 { v = v.substring(0, q) }
+        }
+    }
+    return v
+}
+
+// read an attr value `key=token` from a member ref line (token = up to space).
+fn h_attr(line: string, key: string) -> string {
+    let k = key + "="
+    let p = line.index_of(k)
+    if p < 0 { return "" }
+    let mut i = p + len(k)
+    // optional opening quote
+    let mut quoted = false
+    if i < len(line) { if line.substring(i, i + 1) == "\"" { quoted = true i = i + 1 } }
+    let mut out = ""
+    while i < len(line) {
+        let c = line.substring(i, i + 1)
+        if quoted { if c == "\"" { break } } else { if c == " " || c == "\t" { break } }
+        out = out + c
+        i = i + 1
+    }
+    return out
+}
+
+// the quoted id token after `@corpus ` (the machine id).
+fn h_corpus_id(line: string) -> string {
+    let rest = h_strip(line.substring(7, len(line)))   // after "@corpus"
+    let mut i = 0
+    let mut out = ""
+    while i < len(rest) {
+        let c = rest.substring(i, i + 1)
+        if c == " " || c == "\t" { break }
+        out = out + c
+        i = i + 1
+    }
+    return out
+}
+
+fn corpus_to_hf(text: string) -> string {
+    let lines = text.split("\n")
+    let mut id = ""
+    let mut anchor_level = ""
+    let mut vocab = ""
+    let mut encoding = ""
+    let mut lane_mix = ""
+    let mut count = ""
+    let mut merkle = ""
+    let mut data_files = ""        // JSON array body
+    let mut nfiles = 0
+    let mut i = 0
+    while i < len(lines) {
+        let s = to_string(lines[i])
+        let t = h_strip(s)
+        if h_starts(t, "@corpus ") { id = h_corpus_id(t) }
+        else if h_starts(t, "anchor_level") { anchor_level = h_val_after_eq(t) }
+        else if h_starts(t, "vocab")        { vocab = h_val_after_eq(t) }
+        else if h_starts(t, "encoding")     { encoding = h_val_after_eq(t) }
+        else if h_starts(t, "lane_mix")     { lane_mix = h_val_after_eq(t) }
+        else if h_starts(t, "count")        { count = h_val_after_eq(t) }
+        else if h_starts(t, "merkle")       { merkle = h_val_after_eq(t) }
+        else if h_starts(t, "member") {
+            let path = h_attr(t, "ref")    // ref "path" → attr reads quoted token after ref=
+            // member uses `ref "path"` not `ref=`; read the quoted path directly.
+            let rp = t.index_of("ref")
+            let mut pth = ""
+            if rp >= 0 {
+                let q1 = t.substring(rp, len(t)).index_of("\"")
+                if q1 >= 0 {
+                    let after = t.substring(rp + q1 + 1, len(t))
+                    let q2 = after.index_of("\"")
+                    if q2 >= 0 { pth = after.substring(0, q2) }
+                }
+            }
+            let sha = h_attr(t, "sha256")
+            let cnt = h_attr(t, "count")
+            let frac = h_attr(t, "frac")
+            let lane = h_attr(t, "lane")
+            if nfiles > 0 { data_files = data_files + "," }
+            data_files = data_files +
+                "{\"path\":\"" + h_json_escape(pth) + "\",\"sha256\":\"" + sha +
+                "\",\"num_rows\":" + (if cnt == "" { "0" } else { cnt }) +
+                ",\"frac\":" + (if frac == "" { "0" } else { frac }) +
+                ",\"lane\":\"" + h_json_escape(lane) + "\"}"
+            nfiles = nfiles + 1
+        }
+        i = i + 1
+    }
+    let repo = if id == "" { "dancinlab/unknown" } else { "dancinlab/" + id }
+    return "{\"repo_id\":\"" + repo + "\"," +
+        "\"card\":{\"kosmos\":{\"anchor_level\":\"" + anchor_level +
+        "\",\"vocab\":\"" + vocab + "\",\"encoding\":\"" + encoding +
+        "\",\"lane_mix\":\"" + h_json_escape(lane_mix) + "\",\"count\":\"" + count +
+        "\",\"merkle\":\"" + merkle + "\"}}," +
+        "\"data_files\":[" + data_files + "]}"
+}
+
+fn main() {
+    let a = args()
+    if len(a) < 2 {
+        print("usage: hexa run tool/corpus_to_hf.hexa <corpus.kosmos>")
+        exit(1)
+    }
+    let text = read_file(to_string(a[1]))
+    print(corpus_to_hf(text))
+    exit(0)
+}

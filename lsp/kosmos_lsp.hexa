@@ -268,6 +268,14 @@ fn k_match_anchor(s: string) -> bool {
     return i == n
 }
 
+// CORPUS = same header shape as @anchor (kosmos/2.0 §5.6), kind token = kosmos-corpus.
+// "@corpus" and "@anchor" are both 7 chars and the kind token is \S+ (accepts
+// "kosmos-corpus"), so we reuse k_match_anchor by swapping the 7-char head.
+fn k_match_corpus(s: string) -> bool {
+    if k_starts_with(s, "@corpus") == false { return false }
+    return k_match_anchor("@anchor" + s.substring(7, len(s)))
+}
+
 // HEREDOC = re.compile(r"<<~?([A-Za-z_][\w-]*)\s*$")  — re.search over `t`.
 // returns the tag (group 1) or "" if no match. \w = [A-Za-z0-9_].
 fn k_is_word_char(c: string) -> bool {
@@ -376,6 +384,8 @@ fn k_validate(text: string) -> array {
     let lines = text.split("\n")
     let nlines = len(lines)
     let mut anchors = 0
+    let mut corpora = 0            // kosmos/2.0: column-0 @corpus entries
+    let mut corpus_mode = false    // true once a @corpus top-level entry is seen
     let mut anchor_ln = -1
     // `seen` set of triple keys present → track via 3 bools.
     let mut seen_coord = false
@@ -398,27 +408,84 @@ fn k_validate(text: string) -> array {
                 i = i + 1
             } else {
                 let indent = k_indent(s)
-                if k_starts_with(s, "@anchor") {
-                    anchors = anchors + 1
-                    anchor_ln = i
-                    if indent != 0 {
-                        out = out.push(k_diag(i, 0, len(s), "@anchor must be at column 0", 1))
-                    } else {
+                if indent == 0 {
+                    // column-0 = the single top-level entry: @anchor XOR @corpus (kosmos/2.0)
+                    if k_starts_with(t, "@anchor") {
+                        anchors = anchors + 1
+                        anchor_ln = i
                         if k_match_anchor(s) == false {
                             out = out.push(k_diag(i, 0, len(s),
                                 "malformed @anchor — expected `@anchor <id> := " +
                                 "\"<name>\" :: kosmos-anchor [tier=<N> active]`", 1))
                         }
+                    } else {
+                        if k_starts_with(t, "@corpus") {
+                            corpora = corpora + 1
+                            corpus_mode = true
+                            anchor_ln = i
+                            if k_match_corpus(s) == false {
+                                out = out.push(k_diag(i, 0, len(s),
+                                    "malformed @corpus — expected `@corpus <id> := " +
+                                    "\"<name>\" :: kosmos-corpus [tier=<N> active]`", 1))
+                            }
+                        } else {
+                            out = out.push(k_diag(i, 0, len(s),
+                                "only @anchor / @corpus are column-0 entries; @payload " +
+                                "and fields are indented body lines", 1))
+                        }
                     }
                     i = i + 1
                 } else {
-                    if k_starts_with(s, "@") {
-                        out = out.push(k_diag(i, 0, len(s),
-                            "only @anchor is a column-0 entry; @payload and fields " +
-                            "are 2-space body lines", 1))
-                        i = i + 1
+                    // indented body line (indent >= 2)
+                    if corpus_mode {
+                        // §5.6 corpus body: nested @anchor members / member refs / corpus
+                        // fields / member payloads — accepted at any indent >= 2.
+                        let tag = k_heredoc_tag(t)
+                        if tag != "" {
+                            heredoc = tag
+                            in_heredoc = true
+                            i = i + 1
+                        } else {
+                            if k_starts_with(t, "@anchor") {
+                                if k_match_anchor(t) == false {
+                                    out = out.push(k_diag(i, indent, len(s),
+                                        "malformed @corpus member — expected `@anchor <id> " +
+                                        ":= \"<name>\" :: kosmos-anchor [...]`", 1))
+                                }
+                                i = i + 1
+                            } else {
+                                if k_starts_with(t, "@payload") {
+                                    if k_match_payload(t) == false {
+                                        out = out.push(k_diag(i, indent, len(s),
+                                            "malformed @payload — expected " +
+                                            "`@payload <modality> := ...`", 1))
+                                    }
+                                    i = i + 1
+                                } else {
+                                    let mut key = ""
+                                    let eq = t.index_of("=")
+                                    if eq >= 0 { key = k_strip(t.substring(0, eq)) }
+                                    if key == "coord"  { seen_coord = true }
+                                    if key == "lane"   { seen_lane = true }
+                                    if key == "radius" { seen_radius = true }
+                                    let tok = k_first_token_space(t)
+                                    let recognised =
+                                        k_is_edge(tok) ||
+                                        k_starts_with(t, "\"") ||
+                                        k_starts_with(t, "`") ||
+                                        k_match_kv(t)
+                                    if recognised == false {
+                                        out = out.push(k_diag(i, indent, len(s),
+                                            "unrecognised @corpus body — member @anchor/@payload, " +
+                                            "`key = val` (anchor_level/count/lane_mix/vocab/encoding/" +
+                                            "merkle/member/closed_corpus), edge, or \"prose\"", 2))
+                                    }
+                                    i = i + 1
+                                }
+                            }
+                        }
                     } else {
-                        // body line
+                        // @anchor body — strict 2-space (legacy 1.x path, unchanged)
                         if indent != 2 {
                             out = out.push(k_diag(i, 0, len(s),
                                 "body line indented exactly 2 spaces (under @anchor)", 1))
@@ -438,14 +505,12 @@ fn k_validate(text: string) -> array {
                                     }
                                     i = i + 1
                                 } else {
-                                    // key = t.split("=",1)[0].strip() if "=" in t else ""
                                     let mut key = ""
                                     let eq = t.index_of("=")
                                     if eq >= 0 { key = k_strip(t.substring(0, eq)) }
                                     if key == "coord"  { seen_coord = true }
                                     if key == "lane"   { seen_lane = true }
                                     if key == "radius" { seen_radius = true }
-                                    // tok = t.split(" ",1)[0]
                                     let tok = k_first_token_space(t)
                                     let recognised =
                                         k_is_edge(tok) ||
@@ -467,13 +532,14 @@ fn k_validate(text: string) -> array {
         }
     }
 
-    if anchors == 0 {
+    let top = anchors + corpora
+    if top == 0 {
         out = out.push(k_diag(0, 0, 1,
-            "a .kosmos file must contain exactly one @anchor entry", 1))
+            "a .kosmos file must contain exactly one top-level entry (@anchor or @corpus)", 1))
     } else {
-        if anchors > 1 {
+        if top > 1 {
             out = out.push(k_diag(anchor_ln, 0, 1,
-                "exactly one @anchor per file (one anchor = one file)", 1))
+                "exactly one top-level entry per file (@anchor XOR @corpus, kosmos/2.0)", 1))
         } else {
             // miss = [k for k in TRIPLE if k not in seen]  (ordered coord/lane/radius)
             let mut miss = ""
@@ -502,9 +568,16 @@ fn k_hover(line: string) -> string {
     if k_starts_with(s, "@anchor") {
         return "**@anchor** — the one knowledge anchor (placement basin)"
     }
+    if k_starts_with(s, "@corpus") {
+        return "**@corpus** — a dataset: an ordered collection of member anchors, itself a meta-anchor (kosmos/2.0 §5.6)"
+    }
     if k_starts_with(s, "@payload") {
         return "**@payload** — one sensory channel into the anchor"
     }
+    if k_starts_with(s, "anchor_level") { return "**anchor_level** — member granularity: sample | topic | 2tier (default 2tier)" }
+    if k_starts_with(s, "lane_mix")     { return "**lane_mix** — per-lane mixing fractions, Σ = 1.0 (e.g. \"web=0.8, register=0.2\")" }
+    if k_starts_with(s, "member")       { return "**member** — a packed anchor-pack shard: `member = ref \"*.kanchors\" sha256=… frac=…`" }
+    if k_starts_with(s, "closed_corpus"){ return "**closed_corpus** — corpus integrity (Σ frac = 1.0 ∧ ∀ member sha256 verified)" }
     if k_starts_with(s, "coord")  { return "**coord** — anchor placement (float vector, dim ≥ 1)" }
     if k_starts_with(s, "lane")   { return "**lane** — partition / lane id (quoted string)" }
     if k_starts_with(s, "radius") { return "**radius** — influence radius in coord space (float > 0)" }

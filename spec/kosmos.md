@@ -277,10 +277,10 @@ A corpus lists members in **either or both** forms (mix freely):
     @payload text := "…"
 ```
 
-**(b) ref** — a packed shard of many members (large corpora; avoids file-explosion). The shard is an anchor-pack (`.kanchors`, wire format spec'd in [`spec/kanchors.md`](kanchors.md)), **not** an opaque blob — it holds packed member anchors (length-prefixed serialized `@anchor` records + a trailing merkle root over their content hashes, decodable straight back into inline members):
+**(b) ref** — a packed shard of many members (large corpora; avoids file-explosion). The shard is an anchor-pack (`.limen`, wire format spec'd in [`spec/limen.md`](limen.md)), **not** an opaque blob — it holds packed member anchors (length-prefixed serialized `@anchor` records + a trailing merkle root over their content hashes, decodable straight back into inline members):
 
 ```
-  member = ref "shards/web.kanchors" sha256=<hex64> count=<N> frac=0.8 lane="web"
+  member = ref "shards/web.limen" sha256=<hex64> count=<N> frac=0.8 lane="web"
 ```
 
 `member` ref attrs: `sha256=` (content commitment, required), `count=` (members in shard), `frac=` (this shard's mixing fraction, float; Σ frac over all members = 1.0), `lane=` (source-lane label). `attr` is open (§6.2 rule 6).
@@ -429,7 +429,7 @@ This section consolidates parser obligations. "MUST" / "SHOULD" / "MAY" are used
 ### `kosmos/2.0` — 2026-05-30 (collection layer · MAJOR · active)
 - **`@corpus` entry (§5.6)** — the third entry type. A `.kosmos` file's top-level entry is now `@anchor` **XOR** `@corpus`. A `@corpus` is a **dataset**: an ordered collection of member anchors, itself a meta-anchor carrying the required placement triple (`coord` = members' centroid · `lane` · `radius`). This opens the collection layer foreshadowed in §5.5 (distinct from inter-anchor *edges*, which stay out of scope — a corpus adds *containment*, not pairwise relations).
 - **corpus meta fields (§5.6.2)** — `anchor_level` (`sample`|`topic`|`2tier`, default `2tier`; a scale-free granularity *zoom* parameter — sample/topic/2tier are special cases of one record, not a fork) · `count` · `lane_mix` · `vocab` · `encoding` · `merkle`.
-- **two member forms (§5.6.3)** — inline (nested 2-space `@anchor`) ⊕ ref (`member = ref "*.kanchors" sha256=… frac=…`, a packed anchor-pack — NOT an opaque blob). Mix freely. `attr` BNF extended to allow a `float` value (`frac=0.8`).
+- **two member forms (§5.6.3)** — inline (nested 2-space `@anchor`) ⊕ ref (`member = ref "*.limen" sha256=… frac=…`, a packed anchor-pack — NOT an opaque blob). Mix freely. `attr` BNF extended to allow a `float` value (`frac=0.8`).
 - **`closed_corpus` (§5.6.4)** — corpus-level integrity (Σ frac = 1.0 ∧ ∀ ref member sha256 verified ∧ merkle root recomputes). The §4.2 cross-modal rule applies **per member**, not corpus-wide.
 - **MIGRATION NOTE (1.x → 2.0)**: every `kosmos/1.x` single-anchor file remains valid **unchanged** — it is one column-0 `@anchor`, which 2.0 accepts as one of the two top-level forms. The breaking change is only at the parser/spec contract level: a 1.x parser hard-coding "exactly one `@anchor`" will reject a `@corpus` file (it must learn the `@corpus` top-level form). No existing file is rewritten; no field removed. Producers emitting only `@anchor` need no change. Semver: **major** (top-level invariant generalised). The entry-type count badge moves 2 → 3 (`@anchor`, `@payload`, `@corpus`).
-- **Out of scope (deferred to 2.x minors)**: the `.kanchors` packed-shard binary format, the `merkle` tree construction detail, HF-dataset export, and LSP/tree-sitter `@corpus` recognition — each a follow-on layer; this entry defines the *grammar* only.
+- **Out of scope (deferred to 2.x minors)**: the `.limen` packed-shard binary format, the `merkle` tree construction detail, HF-dataset export, and LSP/tree-sitter `@corpus` recognition — each a follow-on layer; this entry defines the *grammar* only.

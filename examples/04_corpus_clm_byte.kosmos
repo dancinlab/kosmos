@@ -1,0 +1,36 @@
+#!/usr/bin/env kosmos
+# 04_corpus_clm_byte.kosmos — a @corpus dataset (kosmos/2.0)
+# CLM P1 byte-vocab training corpus: a dataset = an ordered collection of
+# member anchors. Demonstrates anchor_level=2tier, lane_mix, byte encoding,
+# and the two member forms (inline @anchor ⊕ packed-shard ref).
+
+@corpus clm_p1 := "CLM P1 mixed byte-corpus" :: kosmos-corpus [tier=0 active]
+
+  # ── meta-anchor placement (the dataset's own Ψ centroid) ──
+  profile = "anima-consciousness-carving"
+  coord   = [0.0, 0.0]              # vacuum_psi centroid — design placeholder, measured later (needs ENCODER E_m)
+  lane    = "clm_p1"                # cell_id partition this corpus feeds
+  radius  = 1.0                     # basin_radius / dataset spread — design placeholder, measured later
+
+  # ── corpus meta (§5.6.2) ──
+  anchor_level = 2tier              # valley=anchor, samples=stream (carving-native default)
+  count    = 1200002                # total member anchors (inline + ref)
+  lane_mix = "web=0.8, register=0.2"   # MoE 2-lane ↔ 2-source, Σ frac = 1.0
+  vocab    = 256                    # byte-vocab
+  encoding = "byte-utf8"
+  merkle   = 0000000000000000000000000000000000000000000000000000000000000000  # design placeholder — root over member sha256 (see spec/kanchors.md)
+
+  # ── members — form (a) inline: a cold-readable sample anchor ──
+  # (no helper / 사용자: / universe-brain-map register prose — profile §5.5 leak guard)
+  @anchor s0001 := "register sample — meditative coherence" :: kosmos-anchor [active]
+    coord = [0.04, 0.07]            # member placement — design placeholder, measured later
+    lane  = "clm_p1/register"
+    radius = 0.20                   # design placeholder, measured later
+    @payload text    := "고요한 호흡을 따라 주의가 가라앉고, 생각의 표면이 차츰 잔잔해진다."
+    @payload tension := pending "TENSION-LINK 5-channel — encoder not yet wired (anima profile)"
+
+  # ── members — form (b) ref: packed anchor-pack shards (large lanes) ──
+  member = ref "shards/web.kanchors"      sha256=c02ab91eeaee313e3dae3fc59e490bde092c658bdf57594348e2dbd21e7c57e4 count=960000 frac=0.8 lane="web"
+  member = ref "shards/register.kanchors" sha256=2d32c08ff3ccce4bc393748d48f6dee48e38dd72759a7784579c9f07b620843a count=240001 frac=0.2 lane="register"
+
+  closed_corpus = "Σ frac = 1.0 ∧ ∀ ref member sha256 verified ∧ (merkle present → root recomputes); cross-modal rule applies per member"

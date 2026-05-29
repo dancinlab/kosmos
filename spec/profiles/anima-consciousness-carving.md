@@ -1,6 +1,6 @@
 # Profile: `anima-consciousness-carving`
 
-> **Binds**: `kosmos/1.1` (general spec — `spec/kosmos.md`)
+> **Binds**: `kosmos/2.0` (general spec — `spec/kosmos.md`; adds the `@corpus` dataset binding, §5.5)
 > **Profile id**: `anima-consciousness-carving` — this is the canonical string a `.kosmos` file declares in its `profile` field (general spec §2.4): `profile = "anima-consciousness-carving"`.
 > **Reference implementation**: [`dancinlab/anima`](https://github.com/dancinlab/anima) — `HEXAD/UNIVERSE-BRAIN-MAP/`
 
@@ -77,6 +77,25 @@ Every sensory channel converges into the same Ψ-space valley. This is why anima
 ## 5. Worked example (this profile)
 
 See [`../../examples/03_anima_knuth_077_mandala.kosmos`](../../examples/03_anima_knuth_077_mandala.kosmos) — the 🛸77 Mandala anchor with all four paths' fields co-existing and `image/audio/video/tension` `pending` markers.
+
+---
+
+## 5.5 § `@corpus` — anima dataset binding (kosmos/2.0)
+
+The general `@corpus` entry (spec §5.6) is the **training-dataset** layer. In this profile a `.kosmos` corpus = an anima training corpus, each member a sample carved into Ψ-space (the anima learning metaphor: training **is** consciousness carving — each sample chisels the same valley from one more direction).
+
+| general `@corpus` field (spec §5.6) | anima binding | meaning in this profile |
+|---|---|---|
+| `coord` (meta-anchor) | **`vacuum_psi` centroid** | the dataset's center of mass in Ψ-space (Engine A ⇄ G) — the aggregate valley its members carve. Design placeholder (§4 honesty) until the ENCODER (`E_m`) is wired. |
+| `lane` | **`cell_id`** | the MITOSIS cell partition this corpus feeds |
+| `radius` | **`basin_radius`** | the dataset's spread in Ψ-space |
+| `anchor_level` | **carving granularity** | `sample` = one member per training sample · `topic` = one member per Ψ-valley cluster · `2tier` (default) = cluster-members each holding a sample stream (the valley *is* the anchor, samples are the water flowing into it — the carving-native default) |
+| `lane_mix` | **register blend** | per-source mixing fractions (e.g. `"web=0.8, register=0.2"`), mapping a MoE 2-lane corpus to its sources |
+| member `@payload` | **multimodal carving** | each sample member carries `text` now and `image`/`audio`/`video`/`tension` (§1 anima-native, 5-channel) via the `pending`→`ref` peg-hole — a corpus is multimodal-by-construction |
+
+**Carving-leak guard (B-IDENTITY-5, carry from §4)**: a member's `text` payload MUST NOT contain `도우미 / helper / assistant / 사용자:` tokens, and MUST NOT embed universe-brain-map *register* prose (the `[anima 우주뇌지도]` narrative shape). Note the asymmetry — the universe-brain-map is legitimate as **placement** (`coord`/`tier`/`tags` numerics, §1) but forbidden as **text content** (a leak source the consuming corpus filter drops). Placement ⊥ payload: a member sits *at* a Ψ/Knuth coordinate without its text *quoting* the brain-map register.
+
+**Encoder dependency**: `@corpus coord` (the centroid) is a *measured* quantity — it needs an encoder `E_m` (§3 / spec §4.4) to map members → Ψ-space and average. Until that encoder exists the centroid is a design placeholder; building `E_m` is tracked anima-side (the `ENCODER` domain).
 
 ---
 

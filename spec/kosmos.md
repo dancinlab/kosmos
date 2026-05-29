@@ -277,7 +277,7 @@ A corpus lists members in **either or both** forms (mix freely):
     @payload text := "…"
 ```
 
-**(b) ref** — a packed shard of many members (large corpora; avoids file-explosion). The shard is an anchor-pack (`.kanchors`, format = a future layer), **not** an opaque blob — it holds packed member anchors:
+**(b) ref** — a packed shard of many members (large corpora; avoids file-explosion). The shard is an anchor-pack (`.kanchors`, wire format spec'd in [`spec/kanchors.md`](kanchors.md)), **not** an opaque blob — it holds packed member anchors (length-prefixed serialized `@anchor` records + a trailing merkle root over their content hashes, decodable straight back into inline members):
 
 ```
   member = ref "shards/web.kanchors" sha256=<hex64> count=<N> frac=0.8 lane="web"

@@ -21,6 +21,7 @@ module.exports = grammar({
       $.blank,
       $.comment,
       $.anchor,
+      $.corpus,
       $.payload,
       $.edge,
       $.body,
@@ -35,6 +36,11 @@ module.exports = grammar({
     anchor: $ => seq($.anchor_kw, $._rest),
 
     anchor_kw: $ => token(prec(5, '@anchor')),
+
+    // column-0 `@corpus <id> := "<name>" :: kosmos-corpus [...]` (kosmos/2.0 §5.6)
+    corpus: $ => seq($.corpus_kw, $._rest),
+
+    corpus_kw: $ => token(prec(5, '@corpus')),
 
     // 2-space body `@payload <modality> := ...`
     payload: $ => seq($._indent, $.payload_kw, $._rest),

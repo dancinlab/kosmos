@@ -8,8 +8,8 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-CC0--1.0-blue"></a>
-  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F1.1-success">
-  <img alt="Entry-types" src="https://img.shields.io/badge/entry--types-2-informational">
+  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F2.0-success">
+  <img alt="Entry-types" src="https://img.shields.io/badge/entry--types-3-informational">
   <img alt="Payload-forms" src="https://img.shields.io/badge/payload--forms-3-informational">
   <img alt="Sibling" src="https://img.shields.io/badge/sibling-tape%20·%20n6%20·%20hxc%20·%20n12-blueviolet">
 </p>
@@ -94,8 +94,12 @@ A profile never changes the grammar — it only binds field semantics. New domai
 ## Quick grep cookbook
 
 ```bash
-# the single anchor header of a file
-grep '^@anchor ' *.kosmos
+# the single top-level entry of a file (@anchor XOR @corpus, kosmos/2.0)
+grep -E '^@(anchor|corpus) ' *.kosmos
+
+# corpus datasets + their packed-shard members
+grep '^@corpus ' *.kosmos
+grep '^  member = ref ' *.kosmos
 
 # every sensory payload
 grep '^  @payload ' *.kosmos

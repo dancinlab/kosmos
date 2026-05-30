@@ -1,13 +1,15 @@
 # limen.md — `.limen` packed anchor-harbor binary format (spec)
 
-> **STATUS: spec-only** (2026-05-30) · a `kosmos/2.x` follow-on layer.
+> **STATUS: spec + reference codec** (codec landed 2026-05-31) · a `kosmos/2.x` follow-on layer.
 > This document defines the **binary container** that a `@corpus` member `ref`
 > points at (`member = ref "shards/web.limen" sha256=… count=… frac=… lane=…`,
 > see `spec/kosmos.md` §5.6.3 form (b)). The `kosmos/2.0` entry (`spec/kosmos.md`
 > §8) deferred the `.limen` binary + the merkle construction detail to a 2.x
 > layer; **this document fills that deferral** — the format + ASCII layout + the
-> merkle construction. The decode/encode **implementation is a future hexa lib**
-> (`impl/limen.hexa`, not yet written) — this is the wire spec it will obey.
+> merkle construction. The decode/encode **reference implementation is
+> `impl/limen.hexa`** (landed 2026-05-31; pure-hexa pack/unpack/verify + byte-array
+> SHA-256 + CRC-32 + merkle, 14/14 self-test in `impl/test_limen_roundtrip.hexa`) —
+> this is the wire spec it obeys.
 
 ---
 
@@ -208,8 +210,8 @@ interchangeable views of the same member set.
 
 | layer | status |
 |---|---|
-| wire format (this doc) | **spec-only** — defined here; no normative reference codec yet |
-| `impl/limen.hexa` pack/unpack codec | **NOT WRITTEN** — future hexa lib; will be the reference encoder/decoder obeying §1–§3 |
+| wire format (this doc) | **stable** — defined here; the reference codec below obeys it |
+| `impl/limen.hexa` pack/unpack codec | **LANDED** (2026-05-31) — pure-hexa reference encoder/decoder obeying §1–§3: `limen_pack`/`limen_unpack`/`limen_verify` + byte-array SHA-256 (FIPS 180-4) + CRC-32/IEEE + §3 merkle + `write_bytes`/`read_file_bytes` disk I/O. 14/14 self-test (`impl/test_limen_roundtrip.hexa`: FIPS+CRC vectors, round-trip, tamper, merkle edges, disk). Note: bytes ride `[int]` (hexa strings are NUL-terminated) and the builtin `sha256()` is strlen-based so a byte-array SHA-256 is carried here |
 | LSP / tree-sitter recognition of `.limen` | out of scope — `.limen` is binary, not a `.kosmos` text grammar; the LSP validates the `member = ref` *line* in the `.kosmos` manifest (see `lsp/kosmos_lsp.hexa`), not the shard bytes |
 | `merkle` field over *all* shards (corpus-of-shards root) | **future minor** (§4 note) — within-shard root is authoritative now |
 

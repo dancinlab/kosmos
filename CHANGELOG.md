@@ -6,6 +6,21 @@ For the full audit trail, see `git log`.
 
 ---
 
+## 2026-05-31
+
+- **`.limen` reference codec landed** (`impl/limen.hexa`) — the pure-hexa pack/unpack
+  encoder/decoder that `spec/limen.md` §6 had marked NOT WRITTEN. Implements the §1–§3
+  wire format: `limen_pack([anchor_text]) -> [int]` (magic + LE header + header CRC-32 +
+  length-prefixed records + trailing SHA-256 merkle root), `limen_unpack`, and
+  `limen_verify` (§4: magic + version + CRC + per-record hash + merkle). Carries a
+  byte-array SHA-256 (FIPS 180-4) because bytes must ride `[int]` (hexa strings are
+  NUL-terminated) and the builtin `sha256()` is strlen-based. Disk I/O via the
+  NUL-safe `write_bytes`/`read_file_bytes` builtins.
+- **`impl/test_limen_roundtrip.hexa`** — 14/14 self-test: FIPS SHA-256 vectors,
+  NUL-in-input (which the builtin truncates), CRC-32/IEEE check value, pack↔unpack
+  round-trip, tamper detection, merkle edge cases (count 0/1), and a disk write→read
+  round-trip. `spec/limen.md` §6 status flipped spec-only → LANDED.
+
 ## 2026-05-30
 
 - **`kosmos/2.0` — `@corpus` 데이터셋 collection 계층 (MAJOR)** — 세 번째 entry type `@corpus` 도입. `.kosmos` 파일의 최상위 entry가 `@anchor` XOR `@corpus`로 일반화. `@corpus` = 데이터셋(멤버 앵커들의 정렬된 모음)이자 그 자체로 meta-anchor(coord=멤버 centroid). §5.5가 예약했던 collection 계층을 엶(inter-anchor edge와는 구분 — containment지 relation 아님). spec `@anchor "exactly one"` 불변은 "최상위 entry 정확히 하나"로 일반화되되, 기존 1.x 단일-앵커 파일은 변경 없이 유효(migration note §8).

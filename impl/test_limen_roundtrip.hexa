@@ -1,0 +1,110 @@
+// ════════════════════════════════════════════════════════════════════════════
+//  test_limen_roundtrip.hexa — runnable check for the .limen reference codec.
+//
+//    F-LIMEN-1  sha256_bytes  : FIPS 180-4 "abc" + empty vectors reproduce
+//    F-LIMEN-2  sha256-NUL    : hashes the full byte run incl. NUL (the builtin
+//                               sha256() cannot — it strlen-truncates)
+//    F-LIMEN-3  crc32_bytes   : IEEE check value CRC32("123456789") = 0xCBF43926
+//    F-LIMEN-4  round-trip    : limen_pack -> limen_unpack preserves members
+//    F-LIMEN-5  verify+tamper : limen_verify == 1; a flipped byte -> 0
+//    F-LIMEN-6  merkle edges  : count==1 root == leaf; count==0 root == SHA("")
+//    F-LIMEN-7  disk I/O      : limen_write -> limen_read (write_bytes/read_file_bytes)
+//
+//  Run: hexa run impl/test_limen_roundtrip.hexa
+// ════════════════════════════════════════════════════════════════════════════
+
+import "limen.hexa"
+
+let mut g_pass = 0
+let mut g_total = 0
+
+fn hexstr(b: [int]) -> string {
+    let hx = "0123456789abcdef"
+    let mut s = ""
+    let mut i = 0
+    while i < len(b) { s = s + chr(char_code(hx, (b[i] >> 4) & 0xF)) + chr(char_code(hx, b[i] & 0xF)); i = i + 1 }
+    return s
+}
+fn ck(name: string, cond: int) {
+    g_total = g_total + 1
+    if cond == 1 { g_pass = g_pass + 1; print("  PASS "); print(name); print("\n") }
+    else { print("  FAIL "); print(name); print("\n") }
+}
+fn str_bytes(s: string) -> [int] {
+    let mut r: [int] = []
+    let mut i = 0
+    while i < len(s) { r.push(char_code(s, i) & 0xFF); i = i + 1 }
+    return r
+}
+fn beq(a: [int], b: [int]) -> int {
+    if len(a) != len(b) { return 0 }
+    let mut i = 0
+    while i < len(a) { if a[i] != b[i] { return 0 } i = i + 1 }
+    return 1
+}
+
+fn main() {
+    print("== F-LIMEN .limen codec ==\n")
+
+    // F-LIMEN-1 — SHA-256 FIPS vectors
+    let abc = hexstr(sha256_bytes([97, 98, 99]))
+    ck("sha256(abc)", _eq_s(abc, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"))
+    let emp = hexstr(sha256_bytes([]))
+    ck("sha256(empty)", _eq_s(emp, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"))
+
+    // F-LIMEN-2 — NUL-containing input hashes its full length (builtin cannot)
+    let nul = sha256_bytes([97, 0, 98])
+    let onea = sha256_bytes([97])
+    ck("sha256(a NUL b) != sha256(a)", _not(beq(nul, onea)))
+
+    // F-LIMEN-3 / 4 / 5 — CRC + round-trip + verify/tamper
+    ck("crc32(123456789)", _eq_i(crc32_bytes(str_bytes("123456789"), 9), 3421780262))
+
+    let members = [
+        "@anchor knuth_005_breath := \"breath (B5)\" :: kosmos-anchor [tier=5 active]\n  coord = [0.44, 0.45]\n  @payload text := \"breath\"",
+        "@anchor knuth_012_step := \"step (B12)\" :: kosmos-anchor [tier=12 active]\n  coord = [0.42, 0.50]\n  @payload text := \"step\"",
+        "@anchor knuth_018_water := \"water (B18)\" :: kosmos-anchor [tier=18 active]\n  coord = [0.45, 0.43]\n  @payload text := \"water\""
+    ]
+    let packed = limen_pack(members)
+    ck("verify(packed)", limen_verify(packed))
+    let back = limen_unpack(packed)
+    ck("unpack count == 3", _eq_i(len(back), 3))
+    let mut mok = 1
+    let mut i = 0
+    while i < len(back) { if back[i] != members[i] { mok = 0 } i = i + 1 }
+    ck("members identical", mok)
+
+    let mut tt = limen_pack(members)
+    tt[40] = (tt[40] + 1) & 0xFF                 // flip a byte inside record 0's hash/text
+    ck("verify(tampered) == 0", _not(limen_verify(tt)))
+
+    // F-LIMEN-6 — merkle edges
+    let one = ["@anchor solo := \"only\" :: kosmos-anchor [tier=0 active]"]
+    ck("verify(1 member)", limen_verify(limen_pack(one)))
+    ck("verify(0 members)", limen_verify(limen_pack([])))
+    // count==1 root equals the single leaf
+    let leaf = sha256_bytes(str_bytes(one[0]))
+    ck("merkle(1) == leaf", beq(limen_merkle_root([leaf]), leaf))
+    // count==0 root equals SHA-256("")
+    let empty_leaves: [[int]] = []
+    ck("merkle(0) == sha256(empty)", beq(limen_merkle_root(empty_leaves), sha256_bytes([])))
+
+    // F-LIMEN-7 — disk write -> read round-trip (write_bytes / read_file_bytes)
+    let nwrote = limen_write("/tmp/limen_test_shard.limen", members)
+    ck("write nonzero", _gt(nwrote, 0))
+    let disk = limen_read("/tmp/limen_test_shard.limen")
+    let mut dok = 1
+    if len(disk) != 3 { dok = 0 }
+    let mut k = 0
+    while k < len(disk) { if disk[k] != members[k] { dok = 0 } k = k + 1 }
+    ck("disk round-trip", dok)
+
+    print("limen self-test: "); print(g_pass); print("/"); print(g_total); print("\n")
+    if g_pass == g_total { print("PASS\n") } else { print("FAILED\n") }
+}
+
+// small boolean helpers (return 1/0)
+fn _eq_s(a: string, b: string) -> int { if a == b { return 1 } return 0 }
+fn _eq_i(a: int, b: int) -> int { if a == b { return 1 } return 0 }
+fn _gt(a: int, b: int) -> int { if a > b { return 1 } return 0 }
+fn _not(x: int) -> int { if x == 0 { return 1 } return 0 }

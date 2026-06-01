@@ -9,8 +9,8 @@
 // F-KOSMOS-RT-2  validity     : the round-tripped anchor is kosmos_anchor_valid
 // F-KOSMOS-RT-3  real-anchor  : every committed knuth anchor parses + is valid
 
-import "/Users/ghost/core/kosmos/impl/anima/kosmos_parser_lib.hexa"
-import "/Users/ghost/core/kosmos/impl/anima/kosmos_anchor.hexa"
+import "kosmos_parser_lib.hexa"
+import "kosmos_anchor.hexa"
 
 fn _approx(a: float, b: float) -> bool {
     let d = a - b
@@ -65,11 +65,21 @@ fn main() {
     else { fail = fail + 1; println("FAIL RT valid") }
 
     // ── F-KOSMOS-RT-3: real committed anchors parse + valid ──
+    // Portable anchor dir: KOSMOS_ANCHOR_DIR env override, else the committed
+    // repo path (anchors/anima/) resolved relative to the invocation cwd.
+    let _ad = env("KOSMOS_ANCHOR_DIR")
+    let mut anchors_dir = "anchors/anima/"
+    if to_string(_ad) != "void" && len(to_string(_ad)) > 0 {
+        anchors_dir = to_string(_ad)
+        if anchors_dir.substring(len(anchors_dir) - 1, len(anchors_dir)) != "/" {
+            anchors_dir = anchors_dir + "/"
+        }
+    }
     let knuth = ["knuth_000_zero", "knuth_015_curiosity", "knuth_077_mandala",
                  "knuth_095_unity"]
     let mut ki = 0
     while ki < len(knuth) {
-        let kp = "/Users/ghost/core/kosmos/anchors/anima/" + knuth[ki] + ".kosmos"
+        let kp = anchors_dir + knuth[ki] + ".kosmos"
         let r = kosmos_load(kp)
         if kosmos_anchor_valid(r) && len(r["vacuum_psi"]) == 2 {
             pass = pass + 1

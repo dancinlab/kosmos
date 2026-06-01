@@ -39,15 +39,15 @@
 //                        `http[s]://` and the `/ws*` path → `/history`.
 //                        Override directly with KOSMOS_HISTORY_URL.
 //    KOSMOS_HISTORY_URL — explicit `GET /history` url (overrides derivation).
-//    KOSMOS_ANCHOR_DIR  — anchor output dir. Default
-//                        HEXAD/UNIVERSE-BRAIN-MAP/anchors (KOSMOS.md SSOT).
+//    KOSMOS_ANCHOR_DIR  — anchor output dir. Default `anchors/anima`
+//                        (the committed repo anchor dir, relative to cwd).
 //    KOSMOS_POLL_SEC    — daemon poll interval seconds (default 5).
 //
 //  HARD CONSTRAINTS — pure-hexa (no torch / no .py edit); hexa-lang syntax
-//    (dict literal `#{}`, missing key → `void`, `import` abs-path only).
+//    (dict literal `#{}`, missing key → `void`, sibling-relative `import`).
 // ════════════════════════════════════════════════════════════════════════════
 
-import "/Users/ghost/core/kosmos/impl/anima/kosmos_anchor.hexa"
+import "kosmos_anchor.hexa"
 use "stdlib/net/http_client"
 
 
@@ -205,8 +205,7 @@ fn poll_cycle(state: dict, history_url: string, anchor_dir: string) -> int {
 // run_daemon — poll forever, sleeping KOSMOS_POLL_SEC between cycles.
 fn run_daemon() {
     let history_url = derive_history_url()
-    let anchor_dir  = _ke_env("KOSMOS_ANCHOR_DIR",
-        "/Users/ghost/core/kosmos/impl/anima/anchors")
+    let anchor_dir  = _ke_env("KOSMOS_ANCHOR_DIR", "anchors/anima")
     let poll_s = to_int(_ke_env("KOSMOS_POLL_SEC", "5"))
     let poll_sec = if poll_s > 0 { poll_s } else { 5 }
     println("[kosmos_emitter] daemon start")
@@ -229,8 +228,7 @@ fn run_daemon() {
 // is for connectivity verification + the offline self-test path.
 fn run_once() {
     let history_url = derive_history_url()
-    let anchor_dir  = _ke_env("KOSMOS_ANCHOR_DIR",
-        "/Users/ghost/core/kosmos/impl/anima/anchors")
+    let anchor_dir  = _ke_env("KOSMOS_ANCHOR_DIR", "anchors/anima")
     println("[kosmos_emitter] single poll cycle")
     println("  history url = " + history_url)
     let state = new_emitter_state()

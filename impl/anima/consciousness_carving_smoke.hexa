@@ -21,11 +21,11 @@
 //  SSOT: HEXAD/UNIVERSE-BRAIN-MAP/DESIGN.md §5 + KOSMOS-FORMAT.md
 // ════════════════════════════════════════════════════════════════════════════
 
-import "/Users/ghost/core/kosmos/impl/anima/consciousness_carving_vacuum_lib.hexa"
-import "/Users/ghost/core/kosmos/impl/anima/consciousness_carving_eternal_lib.hexa"
-import "/Users/ghost/core/kosmos/impl/anima/consciousness_carving_narrative_lib.hexa"
-import "/Users/ghost/core/kosmos/impl/anima/consciousness_carving_weave_lib.hexa"
-import "/Users/ghost/core/kosmos/impl/anima/kosmos_parser_lib.hexa"
+import "consciousness_carving_vacuum_lib.hexa"
+import "consciousness_carving_eternal_lib.hexa"
+import "consciousness_carving_narrative_lib.hexa"
+import "consciousness_carving_weave_lib.hexa"
+import "kosmos_parser_lib.hexa"
 
 
 fn _approx_eq(a: float, b: float, tol: float) -> bool {
@@ -221,7 +221,16 @@ fn _f_carve_4() -> bool {
 
 // ── F-CARVE-5 KOSMOS-PARSE (`.kosmos` parser on 5 anchor files) ──────────────
 fn _f_carve_5() -> bool {
-    let anchors_dir = "/Users/ghost/core/kosmos/anchors/anima/"
+    // Portable anchor dir: KOSMOS_ANCHOR_DIR env override, else the committed
+    // repo path (anchors/anima/) resolved relative to the invocation cwd.
+    let _ad = env("KOSMOS_ANCHOR_DIR")
+    let mut anchors_dir = "anchors/anima/"
+    if to_string(_ad) != "void" && len(to_string(_ad)) > 0 {
+        anchors_dir = to_string(_ad)
+        if anchors_dir.substring(len(anchors_dir) - 1, len(anchors_dir)) != "/" {
+            anchors_dir = anchors_dir + "/"
+        }
+    }
 
     // load knuth_077_mandala — the spec's worked example.
     let mand = kosmos_load(anchors_dir + "knuth_077_mandala.kosmos")

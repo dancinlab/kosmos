@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-CC0--1.0-blue"></a>
-  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F2.0-success">
+  <img alt="Spec" src="https://img.shields.io/badge/spec-kosmos%2F2.1-success">
   <img alt="Entry-types" src="https://img.shields.io/badge/entry--types-3-informational">
   <img alt="Payload-forms" src="https://img.shields.io/badge/payload--forms-3-informational">
   <img alt="Sibling" src="https://img.shields.io/badge/sibling-tape%20·%20n6%20·%20hxc%20·%20n12-blueviolet">
@@ -135,8 +135,9 @@ interactive stdio JSON-RPC server still runs `lsp/kosmos_lsp.py`
 (**DEPRECATED**, retained only because hexa 0.1.0-dispatch has no incremental
 raw N-byte stdin read for LSP Content-Length framing on a live editor pipe —
 see the `.hexa` header). The hexa `validate()` / `hover()` are byte-parity
-with the `.py` over 22 corpus files + 45 hover lines
-(`lsp/PARITY_VERIFY.log`).
+with the `.py` over 26 files (11 anchors + 11 fixtures + 4 examples,
+incl. the kosmos/2.0 `@corpus` example) + 45 hover lines
+(`lsp/PARITY_VERIFY.md`). Both recognise the `@corpus` top-level entry.
 
 Verified against all clean anchors (0 errors) and broken fixtures
 (`lsp/test_fixtures/`). A Claude Code plugin can wire it via `.lsp.json`:

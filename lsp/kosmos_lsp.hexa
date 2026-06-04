@@ -576,7 +576,7 @@ fn k_hover(line: string) -> string {
     }
     if k_starts_with(s, "anchor_level") { return "**anchor_level** — member granularity: sample | topic | 2tier (default 2tier)" }
     if k_starts_with(s, "lane_mix")     { return "**lane_mix** — per-lane mixing fractions, Σ = 1.0 (e.g. \"web=0.8, register=0.2\")" }
-    if k_starts_with(s, "member")       { return "**member** — a packed anchor-pack shard: `member = ref \"*.kanchors\" sha256=… frac=…`" }
+    if k_starts_with(s, "member")       { return "**member** — a packed anchor-pack shard: `member = ref \"*.limen\" sha256=… frac=…`" }
     if k_starts_with(s, "closed_corpus"){ return "**closed_corpus** — corpus integrity (Σ frac = 1.0 ∧ ∀ member sha256 verified)" }
     if k_starts_with(s, "coord")  { return "**coord** — anchor placement (float vector, dim ≥ 1)" }
     if k_starts_with(s, "lane")   { return "**lane** — partition / lane id (quoted string)" }

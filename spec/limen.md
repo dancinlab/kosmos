@@ -1,6 +1,6 @@
 # limen.md — `.limen` packed anchor-harbor binary format (spec)
 
-> **STATUS: spec + reference codec** (codec landed 2026-05-31) · a `kosmos/2.x` follow-on layer.
+> **STATUS: spec + reference codec** (codec landed 2026-05-31; folded into `kosmos/2.1`, `spec/kosmos.md` §8) · a `kosmos/2.x` follow-on layer.
 > This document defines the **binary container** that a `@corpus` member `ref`
 > points at (`member = ref "shards/web.limen" sha256=… count=… frac=… lane=…`,
 > see `spec/kosmos.md` §5.6.3 form (b)). The `kosmos/2.0` entry (`spec/kosmos.md`

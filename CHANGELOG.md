@@ -6,6 +6,24 @@ For the full audit trail, see `git log`.
 
 ---
 
+## 2026-06-04
+
+- **`kosmos/2.1` — `kosmos/2.0` 미뤄둔 4개 layer 전부 LANDED 기록 (minor · grammar 무변경)** —
+  `spec/kosmos.md` §8에 `kosmos/2.1` 항목 추가 + `SPEC VERSION` 헤더/README 뱃지를
+  `2.0`→`2.1`로 lockstep 갱신. `kosmos/2.0` 항목이 "2.x minors로 deferred"라 적어둔
+  ① `.limen` packed-shard 바이너리 포맷(`spec/limen.md` + `impl/limen.hexa` 코덱, 14/14 self-test)
+  ② merkle 트리 구성(`spec/limen.md` §3) ③ HF-dataset export(`tool/corpus_to_hf.hexa` + `docs/hf_export.md`)
+  ④ LSP/tree-sitter `@corpus` 인식 — 네 가지가 모두 구현 완료된 상태를 §8에 정직하게 기록.
+  문법(§1–§6)은 byte-동일 — 2.0 파일 = 2.1 파일.
+- **deprecated `.py` LSP `@corpus` 동기화 — byte-parity 복원.** canonical `lsp/kosmos_lsp.hexa`는
+  kosmos/2.0 `@corpus` 최상위 entry를 인식하는데 deprecated `lsp/kosmos_lsp.py`(라이브 에디터 stdio
+  서버)는 인식하지 못해 유효한 `@corpus` 파일을 "must contain exactly one @anchor entry"로 **오탐**하고
+  진단 문자열 5개가 drift된 상태였음. `.py`의 `validate()`/`hover()`를 `.hexa`에 맞춰 `@corpus`
+  top-level + nested member + corpus meta field + corpus hover까지 미러 → `lsp/PARITY_VERIFY.md`
+  **26/26 파일 byte-equal**(stdout+exit) 복원, `@corpus` example exit 0 확인.
+- **stale `.kanchors` 참조 1건 수정.** `.kanchors`→`.limen` rename(#14)이 놓친 canonical
+  `lsp/kosmos_lsp.hexa` `member` hover 문자열을 `*.limen`으로 교정 (repo 전체 `kanchors` 잔존 0).
+
 ## 2026-05-31
 
 - **`.limen` reference codec landed** (`impl/limen.hexa`) — the pure-hexa pack/unpack

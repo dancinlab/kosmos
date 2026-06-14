@@ -6,6 +6,23 @@ For the full audit trail, see `git log`.
 
 ---
 
+## 2026-06-15
+
+- **chore(harness): perfect harness setup** — brought the repo to full harness
+  conformance. Bumped the `.harness-engine` submodule to latest
+  `harness-hardcore`. Replaced the `CLAUDE.md → project.tape` symlink with a
+  real harness-standard `CLAUDE.md` (H1 + blurb + `## Structure` tree with
+  per-node descriptions + governance summary + `## Harness` quick reference);
+  `project.tape` preserved as the governance `@D` SSOT. Rewrote the stub
+  `ARCHITECTURE.md` as the English architecture SSOT (overview + component map
+  table + data flow + governance/verify). Extended `harness.config.json`:
+  `lockdown.files` now pins the format spec core (`spec/kosmos.md`,
+  `spec/limen.md`, `spec/profiles/anima-consciousness-carving.md`) and added the
+  `docs` block (`architecture`/`log`/`scratchDir` + `scopeDirs: [""]` root-scope
+  + `allow` with root exceptions and README translation variants). Result:
+  `harness docs check` → ok · `harness lint` → ok · `harness gc` → no drift ·
+  0 CLAUDE-MD violations.
+
 ## 2026-06-04
 
 - **`kosmos/2.1` — `kosmos/2.0` 미뤄둔 4개 layer 전부 LANDED 기록 (minor · grammar 무변경)** —

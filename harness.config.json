@@ -3,7 +3,11 @@
   "profile": "hardcore",
   "stack": [],
   "lockdown": {
-    "files": [],
+    "files": [
+      "spec/kosmos.md",
+      "spec/limen.md",
+      "spec/profiles/anima-consciousness-carving.md"
+    ],
     "fromMarkdown": "CLAUDE.md",
     "onEditReminder": "L0 file edited — update CHANGELOG + issue tracker in the same change."
   },
@@ -34,6 +38,29 @@
     "AGENTS.md",
     "README.md"
   ],
+  "docs": {
+    "architecture": "ARCHITECTURE.md",
+    "log": "CHANGELOG.md",
+    "scratchDir": "scripts/scratch",
+    "scopeDirs": [
+      ""
+    ],
+    "allow": [
+      "README.md",
+      "CHANGELOG.md",
+      "ARCHITECTURE.md",
+      "CLAUDE.md",
+      "AGENTS.md",
+      "LICENSE",
+      "CONTRIBUTING.md",
+      "SECURITY.md",
+      "LATTICE_POLICY.md",
+      "README.zh.md",
+      "README.ru.md",
+      "README.ja.md",
+      "README.ko.md"
+    ]
+  },
   "ledger": {
     "staleSec": 1800
   }

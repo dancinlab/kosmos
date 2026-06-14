@@ -31,3 +31,5 @@ state/
 
 # media binaries — .kosmos is a manifest, binary lives elsewhere
 media/
+.harness/logs/
+.harness/handoff/

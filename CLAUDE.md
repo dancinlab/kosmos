@@ -23,13 +23,13 @@ kosmos/
 ├─ docs/                  — README translations (zh · ru · ja · ko) + hf_export guide
 ├─ ARCHITECTURE.md        — architecture SSOT (update-in-place)
 ├─ CHANGELOG.md           — append-only change log
-├─ project.tape           — governance @D invariants (tape format)
+├─ CLAUDE.md              — governance SSOT (@D invariants, markdown)
 └─ .harness-engine/       — dancinlab/harness submodule (AI coding harness)
 ```
 
 ## Governance
 
-The governance invariants (full text in `project.tape` `@D` entries):
+This file is the single markdown governance SSOT (folded in from the retired `project.tape`). The governance invariants:
 
 - **k_spec_ssot** — `spec/kosmos.md` is the single grammar SSOT; a profile binds field semantics only, never grammar.
 - **k_orthogonal** — placement ⊥ payload; a `coord` is modality-independent (exists with zero channels).
